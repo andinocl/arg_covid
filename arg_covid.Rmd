@@ -1,0 +1,156 @@
+---
+title: "Argentina Covid Report"
+author: "andino"
+date: "7/20/2020"
+output: pdf_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Load libraries
+library(incidence)
+library (projections)
+library(epitrix)
+library(EpiModel)
+library(EpiEstim)
+library(rmarkdown)
+library(knitr)
+library(distcrete)
+require(RCurl)
+require(googlesheets4)
+require(tidyr)
+
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+opts_knit$set(eval.after = "fig.cap")
+knitr::opts_chunk$set(fig.pos = '!h')
+options(knitr.kable.NA = '')
+
+# Load data from Google Sheet
+data <- read.csv("https://raw.githubusercontent.com/andinocl/arg_covid/master/data/arg_covid.csv",header=TRUE,sep=",")
+covid_frame <- data.frame(data)
+covid_frame[,c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)] <- sapply(covid_frame[,c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)], as.numeric)
+rows <- nrow(covid_frame)-1
+covid_frame[1:rows,1] <- as.Date(covid_frame[1:rows,1])
+
+# Set up for loops
+national <- c("Argentina","NewCases","NewCases7Day","light blue","blue")
+CABA <- c("CABA","CABANewCases","CABANewCases7Day","green","dark green")
+PBA <- c("Province of Buenos Aires","PBANewCases","PBANewCases7Day","pink","red")
+locality = array(c(national,CABA,PBA),
+                 dim=c(5,3)
+                 )
+colnames(locality) <- c("Argentina","CABA","PBA")
+rownames(locality) <- c("title","cases","avg","light","dark")
+x <- colnames(locality)
+```
+
+## New Cases
+
+The following graphs show the overall epidemiological curves in the localities:
+
+```{r echo=false}
+# plot total cases
+for(val in x) {
+  print(val)
+  x_val = covid_frame[1:rows,1]
+  y_var = locality["cases",val]
+  y_val = covid_frame[1:rows,y_var]
+  plot(covid_frame[1:rows,1],
+       covid_frame[1:rows,locality["cases",val]],
+       type="n",
+       xlab="Date", 
+       ylab="Cases",
+       main=paste("Daily new cases, ",locality["title",val])
+  )
+  grid(nx = 0, ny = NULL, col = "lightgray", lty = "dotted",
+       lwd = par("lwd"), equilogs = TRUE)
+  lines(covid_frame[1:rows,1],
+        covid_frame[1:rows,locality["cases",val]],
+        col=locality["light",val])
+  lines(covid_frame[1:rows,1],
+        covid_frame[1:rows,locality["avg",val]],
+        col=locality["dark",val])
+  legend(x="topleft",
+         y=max(covid_frame[1:rows,locality["cases",val]],na.rm=T),
+         legend=c("Daily Report","7-Day Rolling Average"),
+         col=c(locality["light",val],locality["dark",val]),
+         lty=1:2, cex=0.8)
+}
+
+```
+
+## 14-day trend
+
+Zooming in on the 14-day trend lines:
+
+```{r}
+# plot 14-day trend
+for(val in x) {
+  start_x = rows-14
+  plot(covid_frame[start_x:rows,1],
+       covid_frame[start_x:rows,locality["cases",val]],
+       type="n",
+       xlab="Date", 
+       ylab="Cases",
+       main=paste("Daily new cases, ",locality["title",val])
+  )
+  grid(nx = 0, ny = NULL, col = "lightgray", lty = "dotted",
+       lwd = par("lwd"), equilogs = TRUE)
+  lines(covid_frame[start_x:rows,1],
+        covid_frame[start_x:rows,locality["cases",val]],
+        col=locality["light",val])
+  lines(covid_frame[start_x:rows,1],
+        covid_frame[start_x:rows,locality["avg",val]],
+        col=locality["dark",val])
+  legend(x="topleft",
+         y=max(covid_frame[1:rows,locality["cases",val]],na.rm=T),
+         legend=c("Daily Report","7-Day Rolling Average"),
+         col=c(locality["light",val],locality["dark",val]),
+         lty=1:2, cex=0.8)
+}
+```
+
+## Log graphs
+The following graphs better show the doubling times and rate of growth
+
+```{r}
+# plot log graphs, doubling times for >100, last 14/30/60/90
+log_x_start <- c(17,rows-14,rows-30,rows-60,rows-90)
+log_title <- c("all dates","past 14 days","past 30 days","past 60 days","past 90 days")
+n=0
+dt = matrix(0,nrow=5,ncol = 3)
+rownames(dt) = log_title
+colnames(dt) = c("Argentina","CABA","Province of Buenos Aires")
+for(i in log_x_start) {
+  n=n+1
+  for(val in x) {
+    max_y <- floor(max(log(covid_frame[i:rows,locality["avg",val]])))
+    plot(as.numeric(rownames(covid_frame[i:rows,])),
+         log(covid_frame[i:rows,locality["avg",val]]),
+         type="p",
+         xlab="Days since 100 cases", 
+         ylab="7-day rolling average (log)", 
+         main=paste("New cases (log scale),",
+                    locality["title",val],
+                    "-",
+                    log_title[n]
+              ), 
+         col=locality["light",val])
+    grid(nx=0, ny=NULL,col="lightgray",lty="dotted",lwd=par("lwd"),equilogs=TRUE)
+    fit <- lm(log(covid_frame[i:rows,locality["avg",val]]) 
+              ~ as.numeric(rownames(covid_frame[i:rows,])))
+    abline(fit, col=locality["dark",val])
+    dt[log_title[n],locality["title",val]] <- round(log(2)/fit$coef[2],2) # Doubling time
+    legend(x="topleft",
+           y=1,
+           adj=c(0,0),
+           legend=c(paste("Doubling Time = ",
+                          dt[log_title[n],
+                             locality["title",val]],"days"))
+    )
+    
+  }
+}
+dt
+```
+
