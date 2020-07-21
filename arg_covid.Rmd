@@ -30,7 +30,7 @@ data <- read.csv("https://raw.githubusercontent.com/andinocl/arg_covid/master/da
 covid_frame <- data.frame(data)
 covid_frame[,c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)] <- sapply(covid_frame[,c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)], as.numeric)
 rows <- nrow(covid_frame)-1
-covid_frame[1:rows,1] <- as.Date(covid_frame[1:rows,1])
+covid_frame[,1] <- as.Date(covid_frame[,1],"%Y-%m-%d")
 
 # Set up for loops
 national <- c("Argentina","NewCases","NewCases7Day","light blue","blue")
@@ -48,7 +48,7 @@ x <- colnames(locality)
 
 The following graphs show the overall epidemiological curves in the localities:
 
-```{r echo=false}
+```{r}
 # plot total cases
 for(val in x) {
   print(val)
@@ -152,5 +152,45 @@ for(i in log_x_start) {
   }
 }
 dt
+```
+
+## R0 history
+
+```{r echo=FALSE}
+mu = 5.08  # mean incubation period
+sigma = .18 # deviation in meta analysis
+cv = mu/sigma
+params <- gamma_mucv2shapescale(mu,cv)
+
+for(val in x) {
+  
+                      
+  incid <- as.incidence(covid_frame[8:rows,locality["avg",val]],
+                        dates=covid_frame[8:rows,1], 
+                        interval=1)
+  incid_rows <- dim(incid)
+  si <- distcrete("gamma", 
+                shape=params$shape, 
+                scale=params$scale, 
+                interval=1, w=0.5)
+  pred_1 <- project(incid, R=1.15, si=si, n_days=30, n_sim=1000)
+  f <- fit(incid[90:incid_rows[1]])
+  plot (incid[90:incid_rows[1]], fit=f, color=locality["light",val])
+
+  res_parametric_si <- estimate_R(incid, 
+                        method = "parametric_si",
+                        config = make_config(list(
+                        mean_si=mu,
+                        std_si=sigma)))
+
+#plot(res_parametric_si, legend=FALSE)
+plot(res_parametric_si$R[40:incid_rows[1],3],
+     ylab="R0",
+     xlab="Days since 100 cases",
+     main=paste("R0 over time,",locality["title",val])
+    )
+grid(nx = 0, ny = NULL, col = "lightgray", lty = "dotted",
+       lwd = par("lwd"), equilogs = TRUE)
+}
 ```
 
