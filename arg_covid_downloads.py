@@ -27,9 +27,9 @@ from tkinter import filedialog
 from tkinter import *
 
 root = Tk()
-#print("Select a download directory")
-#root.filedir = filedialog.askdirectory(initialdir="~/")
-root.filedir = "/Users/XXXXX/COVID reports"
+print("Select a download directory")
+root.filedir = filedialog.askdirectory(initialdir="~/")
+#root.filedir = "/Users/XXXXX/COVID reports"
 
 print(root.filedir)
 # Set up for loop to get data for each file
