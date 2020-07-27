@@ -1,7 +1,7 @@
 ---
 title: "Argentina Covid Report"
-author: "andino"
-date: "7/20/2020"
+author: "Chris Andino"
+date: "7/27/2020"
 output: pdf_document
 ---
 
@@ -248,3 +248,62 @@ for(i in incid_x_start) {
 }
 ```
 
+## Other indicators
+
+### Deaths
+
+```{r message=FALSE, warning=FALSE}
+# plot new deaths over time
+  plot(as.numeric(rownames(covid_frame[1:rows,])),
+       log(covid_frame[1:rows,"NewDeaths"]),
+       type="l",
+       xlab="Date", 
+       ylab="Deaths",
+       col="light blue",
+       main="Daily new deaths (log)"
+  )
+  grid(nx = 0, ny = NULL, col = "lightgray", lty = "dotted",
+       lwd = par("lwd"), equilogs = TRUE)
+  minor.tick(nx=2,ny=2)
+  death_fit = lm(log(covid_frame[30:rows,"NewDeaths"]) 
+                 ~ as.numeric(rownames(covid_frame[30:rows,])))
+  abline(death_fit)
+  dt_death <- round(log(2)/death_fit$coef[2],2)
+  legend(x="topleft",
+         y=max(covid_frame[1:rows,"NewDeaths"],na.rm=T),
+         legend=c("Daily New Deaths Reported",
+                  paste("Regression, doubling time",dt_death)),
+         col=c("light blue","dark blue"),
+         lty=1:2, cex=0.8)
+
+
+```
+### ICU Capacity
+TODO:  Fill in gaps in data from MinSalud reporting
+
+```{r message=FALSE, warning=FALSE}
+  plot(covid_frame[90:rows,1],
+       covid_frame[90:rows,"ICUBedsAMBARate"],
+       ylim = c(0,100),
+       type="n",
+       xlab="Date", 
+       ylab="Cases",
+       main=paste("Daily ICU Bed Rate")
+  )
+  grid(nx = 0, ny = NULL, col = "lightgray", lty = "dotted",
+       lwd = par("lwd"), equilogs = TRUE)
+  minor.tick(nx=2,ny=2)
+  lines(covid_frame[90:rows,1],
+        covid_frame[90:rows,"ICUBedsRate"],
+        col="blue")
+  lines(covid_frame[90:rows,1],
+        covid_frame[90:rows,"ICUBedsAMBARate"],
+        col="red")
+  legend(x="topleft",
+         y=max(covid_frame[1:rows,"ICUBedsAMBARate"],na.rm=T),
+         legend=c("Nationwide","AMBA"),
+         col=c("blue", "red"),
+         lty=1:2, cex=0.8)
+
+
+```
