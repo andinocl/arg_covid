@@ -136,7 +136,7 @@ if (get_data) {
   write.csv(table_data,tmp_file,row.names=FALSE)
   
   # write file table_data = as.data.frame(t(scraped_data)) # @TODO Check to make sure headers right
-  data_headers[1:5] <- c("Cases","Recovered","Deaths","LeathalityPct","Tests")
+  data_headers[1:5] <- c("LastUpdate", "Cases","Recovered","Deaths","LeathalityPct","Tests")
   colnames(table_data) <- data_headers
   write.table(table_data,pba_sala_file, sep=",",
               append=TRUE,row.names = FALSE)
