@@ -1,2 +1,6 @@
 .DS_Store
 arg_covid.pdf
+.DS_Store
+data/tmp/
+selenium-server-standalone.jar
+minsalud/
