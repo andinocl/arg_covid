@@ -28,6 +28,10 @@ colnames(amba) <- amba_search
 
 remDr$navigate(pba_webpage)
 Sys.sleep(70) # this page is very slow to load
+
+# @TODO add map loading detecting loop here to make the forced wait time slower
+# @TODO also, perhaps add error detection, as this is the most-common fail site
+
 pbadata <- read_html(remDr$getPageSource()[[1]])
 
 pba_total_data <- pbadata %>%
@@ -81,7 +85,7 @@ if (get_data) {
     menu_element <- NULL
     search_box <- NULL
     muni_check <- NULL
-    map_reload[1] <- c(1)
+    map_reload <- c(1)
     
     while(length(map_reload)>0) { # wait until map loads before trying to click menu
       map_reload <- tryCatch({remDr$findElements(using="xpath",
