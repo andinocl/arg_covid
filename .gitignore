@@ -4,3 +4,5 @@ arg_covid.pdf
 data/tmp/
 selenium-server-standalone.jar
 minsalud/
+.RData
+.Rhistory
