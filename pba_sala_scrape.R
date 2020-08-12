@@ -70,6 +70,8 @@ if(file.exists(pba_sala_file)) {
   }
 } else { file.create(pba_sala_file) }
 
+
+
 if (get_data) {
   if(from_fail_state) {
     muni_loop_vector <- amba_search[which(val == amba_search):length(amba_search)]
