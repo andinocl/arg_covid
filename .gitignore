@@ -6,3 +6,4 @@ selenium-server-standalone.jar
 minsalud/
 .RData
 .Rhistory
+data/old_scrape/tmp/Covid19CasosAug12.csv
