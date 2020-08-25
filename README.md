@@ -1,20 +1,61 @@
 # arg_covid
  Hacks to help understand COVID in Argentina
 
-## arg_covid.Rmd
-R Markdown file to generate number of graphs for National, Buenos Aires, and Province of Buenos Aires, including 14-day trend, doubling time, and estimate of Rt
+ Major updates August 15-August 25 to use the full Ministry of Health Epi file
 
-## data_scrape.R
-Wrapper for scrapers on Argentine national ministry of health and Province of Buenos Aires ministry of health "sala de situacion" data.  Designed to be run as a cron job.  
+@TODO Add a shiny project to make the data easier to explore
 
-@TODO Better error handling, functionize sub calls, add in MinSalud daily reports, etc.
+## new_report.Rmd
+R Markdown file to generate number of graphs for National, Buenos Aires, and Province of Buenos Aires, including 14-day trend, doubling time, and estimate of Rt.  Now includes better R estimator with potential for municipal-level tracking.
 
-### national_sala_scrape.R
-Depends on data_scrape for Selenium connection.  Takes 10x national datapoints and then total cases for each province.
+@TODO: find R instantaneous for each province and municipality of PBA to identify N worst.
+@TODO: add in testing tracker and positivity tracker
+@TODO: add in case growth per 100k
 
-### pba_sala_scrape.R
-Depends on data_scrape for Selenium connection.  Gets 5x datapoints for full province, then each of the 40 municipalities in Greater Buenos Aires area.  Because the website is slow, takes approx 5 minutes to run.
+## cron_scraper.R
+Checks for updates for the national Epi file, cut off at 16:45 local each day. From this data, updates some csv files that collect daily cumulative totals at the national, provincial, and (within CABA and Province of Buenos Aires) municipal/comuna level.
 
-### wiki_scrape.R
-Depends on data_scrape for Selenium connection. Collects daily MinHealth data, daily ICU usage, and periodic age/sex stats. 
+Also collects daily testing data and exports to tests.csv
+
+Designed to be run as a cron task.
+
+Exports data in a compressed data file (CovidEpiFile.RData) stored in a matrix raw_data
+
+## icu_scraper.R
+Scraper that searches the daily evening PDF reports from the ministry of health to obtain ICU usage.  Parses PDF to get raw number of national beds in use, national rate of use, and provincial rate of use. This differs from the ICU data taken from the Epi file, which only report ICU usage due to COVID, not overall utilization. It is possible that this data is drawn only from the public health system.
+
+# Data files
+
+All are stored in the /data directory
+
+## cases.csv
+
+Daily cumulative confirmed cases, by province, since March 2, 2020
+
+## deaths.csv
+
+Daily cumulative deaths due to COVID, by province, since August 14, 2020 
+
+@TODO Add in data from Ministry of Health pdf reports
+
+## recoveries.csv, icu_active.csv, icu_cumulative.csv
+
+Taken from Epi file since August 14.  Data before that would not be particularly useful on the cumulative data, so these data sets will likely be peak/post-peak only.
+
+## CABA and PBA data
+
+### pba.csv
+Collects cumulative case, deaths, recoveries, and ICU cases - as well as daily active ICU cases - at the municipal level for the municipalities in the greater Buenos Aires area (AMBA).  Useful for understanding where cases are growing in the Buenos Aires suburbs. 
+
+### caba.csv
+
+Collects cumulative case, deaths, recoveries, and ICU cases - as well as daily active ICU cases - at the Comuna level in the City of Buenos Aires.  Not particularly useful, as most cases have undefined Comunas.  Data since August 14, 2020.
+
+## Population files: PopulationCABA.csv, PopulationPBA.csv, PopulationNational.csv
+
+The last Argentine census was taken in 2010.  These data are projections for the year 2020 from the national statistical entity - INDEC - for 1.) the City of Buenos Aires at the Comuna level, 2.) the municipalities of AMBA in Province of Buenos Aires, 3.) each individual province.  
+
+Includes total population and population by gender.
+
+
 
