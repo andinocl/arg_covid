@@ -7,3 +7,6 @@ minsalud/
 .RData
 .Rhistory
 data/old_scrape/tmp/Covid19CasosAug12.csv
+rtable.html
+rtableSnapshot.png
+tmp-pdfcrop-80788.tex
