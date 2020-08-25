@@ -9,7 +9,9 @@
 R Markdown file to generate number of graphs for National, Buenos Aires, and Province of Buenos Aires, including 14-day trend, doubling time, and estimate of Rt.  Now includes better R estimator with potential for municipal-level tracking.
 
 @TODO: find R instantaneous for each province and municipality of PBA to identify N worst.
+
 @TODO: add in testing tracker and positivity tracker
+
 @TODO: add in case growth per 100k
 
 ## cron_scraper.R
@@ -51,7 +53,8 @@ Collects cumulative case, deaths, recoveries, and ICU cases - as well as daily a
 
 Collects cumulative case, deaths, recoveries, and ICU cases - as well as daily active ICU cases - at the Comuna level in the City of Buenos Aires.  Not particularly useful, as most cases have undefined Comunas.  Data since August 14, 2020.
 
-## Population files: PopulationCABA.csv, PopulationPBA.csv, PopulationNational.csv
+## Population files
+###PopulationCABA.csv, PopulationPBA.csv, PopulationNational.csv
 
 The last Argentine census was taken in 2010.  These data are projections for the year 2020 from the national statistical entity - INDEC - for 1.) the City of Buenos Aires at the Comuna level, 2.) the municipalities of AMBA in Province of Buenos Aires, 3.) each individual province.  
 
