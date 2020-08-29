@@ -1,7 +1,7 @@
 ---
 title: "Argentina Covid Report"
 author: "Chris Andino"
-date: "8/25/2020"
+date: "8/28/2020"
 output: pdf_document
 ---
 Data as of 8pm 24-AUG-2020
@@ -43,9 +43,9 @@ for(i in 2:rows) {
   NewCasesCABA <- c(NewCasesCABA,data[i,"CasesCABA"]-data[i-1,"CasesCABA"])
   NewCasesPBA <- c(NewCasesPBA,data[i,"CasesBuenosAires"]-data[i-1,"CasesBuenosAires"])
 }
-AvgCasesNational = c(0,0,0,0,0,0,round(rollmean(NewCasesNational,7)))
-AvgCasesCABA = c(0,0,0,0,0,0,round(rollmean(NewCasesCABA,7)))
-AvgCasesPBA = c(0,0,0,0,0,0,round(rollmean(NewCasesPBA,7)))
+AvgCasesNational = c(0,0,0,0,round(rollmean(NewCasesNational,5)))
+AvgCasesCABA = c(0,0,0,0,round(rollmean(NewCasesCABA,5)))
+AvgCasesPBA = c(0,0,0,0,round(rollmean(NewCasesPBA,5)))
 covid_frame <- data.frame(Date=data$Date,
                           TotalCasesNational=data$CasesNational,
                           NewCasesNational,
@@ -97,7 +97,7 @@ for(val in x) {
         col=locality["dark",val])
   legend(x="topleft",
          y=max(covid_frame[1:rows,locality["cases",val]],na.rm=T),
-         legend=c("Daily Report","7-Day Rolling Average"),
+         legend=c("Daily Report","5-Day Rolling Average"),
          col=c(locality["light",val],locality["dark",val]),
          lty=1:2, cex=0.8)
 }
@@ -116,8 +116,10 @@ Zooming in on the 14-day trend lines:
 
 ```{r message=FALSE, warning=FALSE}
 # plot 14-day trend
+  start_x = rows-16
+  rows = rows-2
 for(val in x) {
-  start_x = rows-14
+
   plot(covid_frame[start_x:rows,1],
        covid_frame[start_x:rows,locality["cases",val]],
        type="n",
@@ -138,7 +140,7 @@ for(val in x) {
   #abline(fit)
   legend(x="topleft",
          y=max(covid_frame[1:rows,locality["cases",val]],na.rm=T),
-         legend=c("Daily Report","7-Day Rolling Average"),
+         legend=c("Daily Report","5-Day Rolling Average"),
          col=c(locality["light",val],locality["dark",val]),
          lty=1:2, cex=0.8)
 }

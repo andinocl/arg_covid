@@ -65,7 +65,7 @@ for(this_day in dates) {
 
 colnames(back_icu) <- c("Date","ICUBeds","ICUPctNation","ICUPctAMBA")
 write.table(back_icu,col.names=TRUE,row.names = FALSE,
-            sep=",",file=rate_file,append=TRUE)
+            sep=",",file=rate_file,append=FALSE)
 
 
 
