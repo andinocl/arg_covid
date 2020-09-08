@@ -23,7 +23,8 @@ for(this_day in dates) {
                      str_sub(year(this_day),start=-2),sep="-")
   file_prefix="https://www.argentina.gob.ar/sites/default/files/"
   file_suffix=c("-reporte-vespertino-covid-19.pdf","_reporte_vespertino_covid_19.pdf",
-                "_reporte_vespertino_covid_19_0.pdf","-reporte-vespertino-covid-19_0.pdf")
+                "_reporte_vespertino_covid_19_0.pdf","-reporte-vespertino-covid-19_0.pdf",
+                "_reporte_vespertino_covid-19_1.pdf")
 
   pdf_exists<-FALSE
   for(this_suffix in file_suffix) {
@@ -53,7 +54,10 @@ for(this_day in dates) {
     }
     uti_total_find = str_detect(UC_text,"Casos confirmados COVID-19 internados en UTI")
     uti_total_row = which(uti_total_find == TRUE)
-    icu_total = str_extract(str_extract(UC_text[uti_total_row],": (\\d+)"),"\\d+")
+    ## will collect whether there's a medial period or not
+    icu_total = str_replace(
+      str_replace(str_extract(UC_text[uti_total_row],": (\\d+\\.\\d+|\\d+)"),": ",""),
+      "\\.","")
     this_row = c(this_day,icu_total,nation_pct,amba_pct)
   }
   else { 

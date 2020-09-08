@@ -1,10 +1,10 @@
 ---
 title: "Argentina Covid Report"
 author: "Chris Andino"
-date: "8/28/2020"
+date: "9/7/2020"
 output: pdf_document
 ---
-Data as of 8pm 24-AUG-2020
+Data as of 8pm 7-SEP-2020
 
 ```{r global_options, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -38,14 +38,19 @@ rows <- nrow(data)
 NewCasesNational = c(0)
 NewCasesCABA = c(0)
 NewCasesPBA = c(0)
+NewCasesAMBA = c(0)
+CasesAMBA = c(data[1,"CasesCABA"]+data[1,"CasesBuenosAires"])
 for(i in 2:rows) {
   NewCasesNational <- c(NewCasesNational,data[i,"CasesNational"]-data[i-1,"CasesNational"])
   NewCasesCABA <- c(NewCasesCABA,data[i,"CasesCABA"]-data[i-1,"CasesCABA"])
   NewCasesPBA <- c(NewCasesPBA,data[i,"CasesBuenosAires"]-data[i-1,"CasesBuenosAires"])
+  CasesAMBA <- c(CasesAMBA,data[i,"CasesCABA"]+data[i,"CasesBuenosAires"])
+  NewCasesAMBA <- c(NewCasesAMBA,CasesAMBA[i]-CasesAMBA[i-1])
 }
 AvgCasesNational = c(0,0,0,0,round(rollmean(NewCasesNational,5)))
 AvgCasesCABA = c(0,0,0,0,round(rollmean(NewCasesCABA,5)))
 AvgCasesPBA = c(0,0,0,0,round(rollmean(NewCasesPBA,5)))
+AvgCasesAMBA = c(0,0,0,0,round(rollmean(NewCasesAMBA,5)))
 covid_frame <- data.frame(Date=data$Date,
                           TotalCasesNational=data$CasesNational,
                           NewCasesNational,
@@ -55,18 +60,22 @@ covid_frame <- data.frame(Date=data$Date,
                           AvgCasesCABA,
                           TotalCasesPBA=data$CasesBuenosAires,
                           NewCasesPBA,
-                          AvgCasesPBA)
+                          AvgCasesPBA,
+                          TotalCasesAMBA=CasesAMBA,
+                          NewCasesAMBA,
+                          AvgCasesAMBA)
 
 covid_frame[,1] <- as.Date(covid_frame[,1],"%Y-%m-%d")
 
 # Set up for loops
 national <- c("Argentina","NewCasesNational","AvgCasesNational","light blue","blue")
 CABA <- c("CABA","NewCasesCABA","AvgCasesCABA","green","dark green")
-PBA <- c("Province of Buenos Aires","NewCasesPBA","AvgCasesPBA","pink","red")
-locality = array(c(national,CABA,PBA),
-                 dim=c(5,3)
+PBA <- c("Conurbano","NewCasesPBA","AvgCasesPBA","pink","red")
+AMBA <- c("AMBA","NewCasesAMBA","AvgCasesAMBA","yellow","dark orange")
+locality = array(c(national,CABA,PBA,AMBA),
+                 dim=c(5,4)
                  )
-colnames(locality) <- c("Argentina","CABA","PBA")
+colnames(locality) <- c("Argentina","CABA","Conurbano","AMBA")
 rownames(locality) <- c("title","cases","avg","light","dark")
 x <- colnames(locality)
 
@@ -101,12 +110,13 @@ for(val in x) {
          col=c(locality["light",val],locality["dark",val]),
          lty=1:2, cex=0.8)
 }
-show_frame <- as.data.frame(covid_frame[161:175,])
-#show_frame
-rtable <- reactable(show_frame,minRows=15)
-html <- "rtable.html"
-saveWidget(rtable,html)
-webshot(html, "rtableSnapshot.png")
+start_frame = rows-14
+show_frame <- as.data.frame(covid_frame[start_frame:rows,])
+show_frame
+#rtable <- reactable(show_frame,minRows=15)
+#html <- "rtable.html"
+#saveWidget(rtable,html)
+#webshot(html, "rtableSnapshot.png")
 ```
 \newpage
 
@@ -116,8 +126,8 @@ Zooming in on the 14-day trend lines:
 
 ```{r message=FALSE, warning=FALSE}
 # plot 14-day trend
-  start_x = rows-16
-  rows = rows-2
+  start_x = rows-14
+  #rows = rows-2
 for(val in x) {
 
   plot(covid_frame[start_x:rows,1],
@@ -130,7 +140,7 @@ for(val in x) {
   #minor.tick(ny=2)
   grid(nx = 0, ny = NULL, col = "lightgray", lty = "dotted",
        lwd = par("lwd"), equilogs = TRUE)
-  lines(covid_frame[start_x:rows,1],
+  points(covid_frame[start_x:rows,1],
         covid_frame[start_x:rows,locality["cases",val]],
         col=locality["light",val])
   lines(covid_frame[start_x:rows,1],
@@ -174,9 +184,9 @@ $$
 log_x_start <- c(17,rows-14,rows-30,rows-60,rows-90)
 log_title <- c("all dates","past 14 days","past 30 days","past 60 days","past 90 days")
 n=0
-dt = matrix(0,nrow=5,ncol = 3)
+dt = matrix(0,nrow=5,ncol = 4)
 rownames(dt) = log_title
-colnames(dt) = c("Argentina","CABA","Province of Buenos Aires")
+colnames(dt) = c("Argentina","CABA","Conurbano","AMBA")
 for(i in log_x_start) {
   n=n+1
   for(val in x) {
@@ -185,7 +195,7 @@ for(i in log_x_start) {
          log(covid_frame[i:rows,locality["avg",val]]),
          type="p",
          xlab="Days since 100 cases", 
-         ylab="7-day rolling average (log)", 
+         ylab="5-day rolling average (log)", 
          main=paste("New cases (log scale),",
                     locality["title",val],
                     "-",
@@ -340,10 +350,11 @@ load("CovidEpiFile.RData")
 confirmed <- raw_data[clasificacion_resumen %in% c("Confirmado")]
 caba_incid <- confirmed[residencia_provincia_nombre %in% c("CABA")]
 pba_incid <- confirmed[residencia_provincia_nombre %in% c("Buenos Aires")]
+amba_incid <- rbind(caba_incid,pba_incid)
 sanisidro_incid <- pba_incid[residencia_departamento_nombre %in% c("San Isidro")]
 loop_pools <- list(confirmed,caba_incid,pba_incid,sanisidro_incid)
-graph_titles <- c("National","CABA","PBA","San Isidro")
-graph_colors <- c("blue","green","red","red")
+graph_titles <- c("National","CABA","Conurbano","AMBA","San Isidro")
+graph_colors <- c("blue","green","orange","red","red")
 
 for(i in 1:length(loop_pools)) {
   incid <- incidence(loop_pools[[i]]$fecha_apertura)

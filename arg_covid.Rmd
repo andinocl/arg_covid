@@ -1,7 +1,7 @@
 ---
 title: "Argentina Covid Report"
 author: "Chris Andino"
-date: "7/27/2020"
+date: "8/21/2020"
 output: pdf_document
 ---
 
@@ -27,7 +27,9 @@ knitr::opts_chunk$set(fig.pos = '!h')
 options(knitr.kable.NA = '')
 
 # Load data from Google Sheet
-data <- read.csv("https://raw.githubusercontent.com/andinocl/arg_covid/master/data/arg_covid.csv",header=TRUE,sep=",")
+#data <- read.csv("https://raw.githubusercontent.com/andinocl/arg_covid/master/data/arg_covid.csv",header=TRUE,sep=",")
+local_file <- "data/arg_covid.csv"
+data <- read.csv(local_file,header=TRUE,sep=",")
 covid_frame <- data.frame(data)
 covid_frame[,c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)] <- sapply(covid_frame[,c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)], as.numeric)
 rows <- nrow(covid_frame)-1
