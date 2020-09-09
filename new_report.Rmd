@@ -1,10 +1,10 @@
 ---
 title: "Argentina Covid Report"
 author: "Chris Andino"
-date: "9/7/2020"
+date: "9/8/2020"
 output: pdf_document
 ---
-Data as of 8pm 7-SEP-2020
+Data as of 10:50pm 7-SEP-2020
 
 ```{r global_options, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -385,4 +385,44 @@ for(i in 1:length(loop_pools)) {
 }
 
 
+```
+
+## Testing and positivity rates
+
+```{r message=FALSE, warning=FALSE}
+test_data <- read.csv2("data/tests.csv",header=TRUE,sep=",")
+NewTestsNational = c(test_data$TotalTests[1])
+PositiveTestsNational = c(test_data$PositiveTests[1])
+PositivityNational = c(PositiveTestsNational/NewTestsNational)
+NewTestsCABA = c(test_data$TotalTestsCABA[1])
+PositiveTestsCABA = c(test_data$PositiveTestsCABA[1])
+PositivityCABA = c(PositiveTestsCABA/NewTestsCABA)
+NewTestsPBA = c(test_data$TotalTestsBuenosAires[1])
+PositiveTestsPBA = c(test_data$PositiveTestsBuenosAires[1])
+PositivityPBA = c(PositiveTestsPBA/NewTestsPBA)
+
+test_rows = nrow(test_data)
+for(i in 2:test_rows) {
+  NewTestsNational = c(NewTestsNational,test_data$TotalTests[i]-test_data$TotalTests[i-1])
+  PositiveTestsNational = c(PositiveTestsNational,test_data$PositiveTests[i]-test_data$PositiveTests[i-1])
+  PositivityNational = c(PositivityNational,PositiveTestsNational[i]/NewTestsNational[i])
+  NewTestsCABA = c(NewTestsCABA,test_data$TotalTestsCABA[i]-test_data$TotalTestsCABA[i-1])
+  PositiveTestsCABA = c(PositiveTestsCABA,test_data$PositiveTestsCABA[i]-test_data$PositiveTestsCABA[i-1])
+  PositivityCABA = c(PositivityCABA,PositiveTestsCABA[i]/NewTestsCABA[i])
+  NewTestsPBA = c(NewTestsPBA,test_data$TotalTestsBuenosAires[i]-test_data$TotalTestsBuenosAires[i-1])
+  PositiveTestsPBA = c(PositiveTestsPBA,test_data$PositiveTestsBuenosAires[i]-test_data$PositiveTestsBuenosAires[i-1])
+  PositivityPBA = c(PositivityPBA,PositiveTestsPBA[i]/NewTestsPBA[i])
+  nrow(PositiveTestsNational)
+}
+test_df <- as.data.frame(cbind(as.Date(test_data$Date),NewTestsNational,PositiveTestsNational,PositivityNational,
+                           NewTestsCABA,PositiveTestsCABA,PositivityCABA,NewTestsPBA,PositiveTestsPBA,
+                           PositivityPBA),col.names=TRUE)
+test_locality = c("National","CABA","Province of Buenos Aires")
+for(i in 1:3) {
+  y_data = i*3+1
+  plot(test_df$V1,test_df[,y_data],
+       main=paste("Test positivity rate",test_locality[i]),
+       xlim=c(test_df$V1[1],test_df$V1[test_rows]),
+       ylim=c(0,1))
+}
 ```
