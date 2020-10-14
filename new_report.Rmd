@@ -1,12 +1,12 @@
 ---
 title: "Argentina Covid Report"
 author: "Chris Andino"
-date: "9/8/2020"
+date: "October 11 2020"
 output: pdf_document
 ---
-Data as of 10:50pm 7-SEP-2020
+Data as of 10 am 11-OCT-2020
 
-```{r global_options, include=FALSE}
+```{r global-options, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # Load libraries
 library(incidence)
@@ -85,7 +85,7 @@ x <- colnames(locality)
 
 The following graphs show the overall epidemiological curves in the localities based on simple "new cases per day" as reported.  Note that date of case report DOES NOT equal date of first symptoms or diagnosis, necessarily.  Rather, this data is the change in cases from the previous day's report:
 
-```{r message=FALSE, warning=FALSE}
+```{r label=new-cases, message=FALSE, warning=FALSE}
 # plot total cases
 for(val in x) {
   plot(covid_frame[1:rows,1],
@@ -122,9 +122,9 @@ show_frame
 
 ## 14-day trend
 
-Zooming in on the 14-day trend lines:
+Phase 1: 14-day trend lines
 
-```{r message=FALSE, warning=FALSE}
+```{r 14-day-trend, message=FALSE, warning=FALSE}
 # plot 14-day trend
   start_x = rows-14
   #rows = rows-2
@@ -135,7 +135,40 @@ for(val in x) {
        type="n",
        xlab="Date", 
        ylab="Cases",
-       main=paste("Daily new cases, ",locality["title",val])
+       main=paste("14-day trend, ",locality["title",val])
+  )
+  #minor.tick(ny=2)
+  grid(nx = 0, ny = NULL, col = "lightgray", lty = "dotted",
+       lwd = par("lwd"), equilogs = TRUE)
+  points(covid_frame[start_x:rows,1],
+        covid_frame[start_x:rows,locality["cases",val]],
+        col=locality["light",val])
+  lines(covid_frame[start_x:rows,1],
+        covid_frame[start_x:rows,locality["avg",val]],
+        col=locality["dark",val])
+  #fit <- lm(covid_frame[start_x:rows,locality["avg",val]] ~ covid_frame[start_x:rows,1])
+  #abline(fit)
+  legend(x="topleft",
+         y=max(covid_frame[1:rows,locality["cases",val]],na.rm=T),
+         legend=c("Daily Report","5-Day Rolling Average"),
+         col=c(locality["light",val],locality["dark",val]),
+         lty=1:2, cex=0.8)
+}
+```
+## Phase 2 decisions
+
+```{r 28-day-trend, message=FALSE, warning=FALSE}
+# plot 28-day trend
+  start_x = rows-28
+  #rows = rows-2
+for(val in x) {
+
+  plot(covid_frame[start_x:rows,1],
+       covid_frame[start_x:rows,locality["cases",val]],
+       type="n",
+       xlab="Date", 
+       ylab="Cases",
+       main=paste("28-day trend, ",locality["title",val])
   )
   #minor.tick(ny=2)
   grid(nx = 0, ny = NULL, col = "lightgray", lty = "dotted",
@@ -179,7 +212,7 @@ dt = log(2)/b
 $$
 
 
-```{r}
+```{r log-graphs}
 # plot log graphs, doubling times for >100, last 14/30/60/90
 log_x_start <- c(17,rows-14,rows-30,rows-60,rows-90)
 log_title <- c("all dates","past 14 days","past 30 days","past 60 days","past 90 days")
@@ -236,7 +269,7 @@ $$
 $$
 A gamma distribution is created programatically, and the estimate_R function is run against incidence objects containing the new cases reported each day.
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r weak-r-estimate, echo=FALSE, message=FALSE, warning=FALSE}
 # predict R0
 # coronavirus details from https://doi.org/10.1002/jmv.26041
 mu = 5.08  # mean incubation period
@@ -299,7 +332,7 @@ for(i in incid_x_start) {
 
 
 
-```{r message=FALSE, warning=FALSE}
+```{r deaths, message=FALSE, warning=FALSE}
 ## Other indicators
 
 ### Deaths
@@ -308,7 +341,7 @@ for(i in incid_x_start) {
 ### ICU Capacity
 
 
-```{r message=FALSE, warning=FALSE}
+```{r icu-graphs, message=FALSE, warning=FALSE}
   icu_file <- "data/icu_rates.csv"
   icu_data <- read.csv2(icu_file,sep=",")
   plot(as.Date(icu_data$Date),
@@ -343,7 +376,7 @@ This data is drawn from over 1 million epidemiological records, indexed by the d
 
 An incidence object is created using all confirmed cases in Argentina. The estimate_R() function from the EpiEstim package is used with the serial interval as described in the R estimate section above. While the estimate_R() function uses a rolling 7-day window, we also force the estimate away from the last five days of data due to the confirmation lag.
 
-```{r message=FALSE, warning=FALSE}
+```{r label=better-r-estimate, message=FALSE, warning=FALSE }
 ## Other indicators
 load("CovidEpiFile.RData")
 
@@ -357,9 +390,9 @@ graph_titles <- c("National","CABA","Conurbano","AMBA","San Isidro")
 graph_colors <- c("blue","green","orange","red","red")
 
 for(i in 1:length(loop_pools)) {
-  incid <- incidence(loop_pools[[i]]$fecha_apertura)
+  incid <- incidence(as.Date(loop_pools[[i]]$fecha_apertura))
   right_bound <- nrow(incid$counts) - 5
-  thirty <- right_bound - 30
+  thirty <- right_bound - 37
   
   res_parametric_si <- estimate_R(incid[1:right_bound],
                                   method = "parametric_si",
@@ -372,16 +405,22 @@ for(i in 1:length(loop_pools)) {
        xlab="Days",
        type="l",
        main=paste("R0 over time,",graph_titles[i],"Overall"),
-       col=graph_colors[i]
+       col=graph_colors[i],
+       ylim=c(.5,2.5)
   )
+  grid(nx = 0, ny = NULL, col = "lightgray", lty = "dotted",
+       lwd = par("lwd"), equilogs = TRUE)
   
   plot(res_parametric_si$R[thirty:right_bound,3],
        ylab="R0",
        xlab="Days",
        type="l",
        main=paste("R0 over time,",graph_titles[i],"Past Month"),
-       col=graph_colors[i]
+       col=graph_colors[i],
+       ylim=c(.5,2)
   )
+  grid(nx = 0, ny = NULL, col = "lightgray", lty = "dotted",
+       lwd = par("lwd"), equilogs = TRUE)
 }
 
 
@@ -389,7 +428,7 @@ for(i in 1:length(loop_pools)) {
 
 ## Testing and positivity rates
 
-```{r message=FALSE, warning=FALSE}
+```{r positivity_rates, message=FALSE, warning=FALSE}
 test_data <- read.csv2("data/tests.csv",header=TRUE,sep=",")
 NewTestsNational = c(test_data$TotalTests[1])
 PositiveTestsNational = c(test_data$PositiveTests[1])
@@ -423,6 +462,11 @@ for(i in 1:3) {
   plot(test_df$V1,test_df[,y_data],
        main=paste("Test positivity rate",test_locality[i]),
        xlim=c(test_df$V1[1],test_df$V1[test_rows]),
+       xlab="Date",
+       ylab="Positivity rate",
        ylim=c(0,1))
+  grid(nx = 0, ny = NULL, col = "lightgray", lty = "dotted",
+       lwd = par("lwd"), equilogs = TRUE)
 }
+test_df
 ```
