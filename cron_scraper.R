@@ -256,6 +256,9 @@ if(needs_update) { # only run downloads if we must
       write_deltas = TRUE
     }
   }
+  #
+  # @Todo fix this, for whatever reason "ultima_actualizacion" no longer current date
+  #
   if(record_date == max(as.Date(raw_tests$ultima_actualizacion))) {
     tests_table = as.data.frame(t(tests_total))
     colnames(tests_table) <- tests_header_vector
