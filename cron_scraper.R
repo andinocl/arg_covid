@@ -259,15 +259,17 @@ if(needs_update) { # only run downloads if we must
   #
   # @Todo fix this, for whatever reason "ultima_actualizacion" no longer current date
   #
-  if(record_date == max(as.Date(raw_tests$ultima_actualizacion))) {
-    tests_table = as.data.frame(t(tests_total))
-    colnames(tests_table) <- tests_header_vector
-    if(file.exists(tests_file)) {
+  tests_table = as.data.frame(t(tests_total))
+  colnames(tests_table) <- tests_header_vector
+  if(file.exists(tests_file)) {
+    if(tests_total[1] %in% raw_tests$fecha) { #
+    }else{
       write.table(tests_table,tests_file,sep=",",append=TRUE,row.names=FALSE,col.names=FALSE) 
-    } else {
-      write.csv(tests_table,tests_file,row.names=FALSE)
     }
+  }else{
+    write.csv(tests_table,tests_file,row.names=FALSE)
   }
+
   
   pba_table = as.data.frame(t(pba_data))
   colnames(pba_table) <- pba_headers

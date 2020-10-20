@@ -4,7 +4,7 @@ author: "Chris Andino"
 date: "October 14 2020"
 output: pdf_document
 ---
-Data as of 9:30 am 15-OCT-2020
+Data as of 9:40 am 20-OCT-2020
 
 ```{r global-options, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -80,12 +80,12 @@ covid_frame[,1] <- as.Date(covid_frame[,1],"%Y-%m-%d")
 # Set up for loops
 national <- c("Argentina","NewCasesNational","AvgCasesNational","light blue","blue")
 CABA <- c("CABA","NewCasesCABA","AvgCasesCABA","green","dark green")
-PBA <- c("Conurbano","NewCasesPBA","AvgCasesPBA","pink","red")
+PBA <- c("PBA","NewCasesPBA","AvgCasesPBA","pink","red")
 AMBA <- c("AMBA","NewCasesAMBA","AvgCasesAMBA","yellow","dark orange")
 locality = array(c(national,CABA,PBA,AMBA),
                  dim=c(5,4)
                  )
-colnames(locality) <- c("Argentina","CABA","PBA","AMBA (CABA+Conurbano)")
+colnames(locality) <- c("Argentina","CABA","PBA","AMBA")
 rownames(locality) <- c("title","cases","avg","light","dark")
 x <- colnames(locality)
 
@@ -229,7 +229,7 @@ log_title <- c("all dates","past 14 days","past 30 days","past 60 days","past 90
 n=0
 dt = matrix(0,nrow=5,ncol = 4)
 rownames(dt) = log_title
-colnames(dt) = c("Argentina","CABA","PBA") # remove AMBA+Conurbano because problems
+colnames(dt) = c("Argentina","CABA","PBA","AMBA")
 for(i in log_x_start) {
   n=n+1
   for(val in x) {
