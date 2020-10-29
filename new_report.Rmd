@@ -4,7 +4,7 @@ author: "Chris Andino"
 date: "October 14 2020"
 output: pdf_document
 ---
-Data as of 9:40 am 20-OCT-2020
+Data as of 10:40 am 26-OCT-2020
 
 ```{r global-options, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -32,8 +32,10 @@ knitr::opts_chunk$set(fig.pos = '!h')
 options(knitr.kable.NA = '')
 webshot::install_phantomjs()
 
-local_file <- "data/cases.csv"
-conurbano_file <- "data/pba.csv"
+cases_file <- "data/cases.csv"
+conurbano_file <- "data/conurbano.csv"
+cases_delta_fiel <- "data/cases_deltas.csv"
+conurbano_deltas_file <- "data/conurbano_deltas.csv"
 conurbano_data <- read.csv(conurbano_file,header=TRUE,sep=",")
 conurbano_dates <- conurbano_data$Date
 conurbano_data$Date <- NULL
@@ -41,13 +43,17 @@ conurbano_data <- conurbano_data[,c(TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)]
 conurbano_data$ConurbanoTotal <- rowSums(conurbano_data)
 conurbano_data$Date <- conurbano_dates
 
-data <- read.csv(local_file,header=TRUE,sep=",")
+data <- read.csv(cases_file,header=TRUE,sep=",")
 data <- merge(x=data, y=conurbano_data,by="Date",all.x=TRUE)
 rows <- nrow(data)
 NewCasesNational = c(0)
 NewCasesCABA = c(0)
 NewCasesPBA = c(0)
 NewCasesAMBA = c(0)
+# NewCasesNational <- data["CasesNational"]
+# NewCasesCABA = c(0)
+# NewCasesPBA = c(0)
+# NewCasesAMBA = c(0)
 CasesAMBA = c(data[1,"CasesCABA"]+data[1,"ConurbanoTotal"])
 for(i in 2:rows) {
   NewCasesNational <- c(NewCasesNational,data[i,"CasesNational"]-data[i-1,"CasesNational"])

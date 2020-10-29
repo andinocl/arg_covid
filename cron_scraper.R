@@ -1,5 +1,6 @@
 library(data.table)
 library(incidence)
+library(imputeTS)
 
 # @TODO Add currently in hospital?
 
@@ -15,12 +16,55 @@ recoveries_file = "data/recoveries.csv"
 icu_cumulative_file ="data/icu_cumulative.csv"
 icu_active_file = "data/icu_active.csv"
 tests_file = "data/tests.csv"
-pba_file ="data/pba.csv"
+pba_file ="data/conurbano.csv"
 caba_file = "data/caba.csv"
+
+deltas_case_file = "data/cases_deltas.csv"
+deltas_deaths_file = "data/deaths_deltas.csv"
+deltas_pba_file = "data/conurbano_deltas.csv"
 
 update_time = "18:45"
 
+covid_deltas <- function(orig_df, nas = "avg", start_date = "2020-03-02") {
+  # return a new dataframe containing the deltas from cumulative data
+  
+  #DEBUG
+  #orig_df <- case_data
+  #start_date <- "2020-03-02"
+  #nas <- "avg"
+  
+  ## Trim frame for the start_date
+  if(start_date %in% orig_df$Date) { 
+    start_frame <- which(orig_df$Date == start_date)
+    orig_df <- orig_df[start_frame:nrow(orig_df),]
+  }
+  
+  ## Ensure all dates in range have a row
+  z <- read.zoo(orig_df,row.names=orig_df$Date)
+  gz <- zoo(,seq(as.Date(min(time(z)),"%Y-%m-%d"),as.Date(max(time(z)),"%Y-%m-%d"),by="day")) # get time series
+  #gz <- zoo(as.Date(seq(min(time(z)),max(time(z)),by="day"),"%Y-%m-%d"))
+  cumulative_df <- merge(z,gz)
+  
+  ## Fill missing data
+  # Average the NAs based on trailing data
+  if(nas == "avg") {
 
+    for(i in 1:ncol(cumulative_df)) {
+      # cumulative_df <- floor((na.locf(cumulative_df) + rev(na.locf(rev(cumulative_df))))/2)
+      cumulative_df <- round(na_interpolation(cumulative_df,option="linear"),digits=0)
+    }
+  }
+  
+  # Replace NAs with zeros 
+  if(nas == "zero") {
+    cumulative_df[is.na(cumulative_df)] <- 0
+  }
+  
+  ## Get deltas
+  delta_zoo <- diff(cumulative_df)
+  delta_frame <- data.frame("Date"=index(cumulative_df[-1,]),as.data.frame(delta_zoo))
+  return(delta_frame)
+}
 
 # only run if data needs updating
 needs_update = FALSE
@@ -158,6 +202,14 @@ if(needs_update) { # only run downloads if we must
   amba_icu_active <- icu_active[residencia_provincia_nombre  %in% c("Buenos Aires")]
   amba_tests <- raw_tests[provincia %in% c("Buenos Aires")]
   
+  conurbano_cases <- 0
+  conurbano_deaths <- 0
+  conurbano_recoveries <- 0
+  conurbano_icu_cases <- 0
+  conurbano_icu_active <- 0
+  conurbano_tests_total <- 0
+  conurbano_tests_pos <- 0
+  
   pba_data <- c(record_date)
   
   pba_headers <- c("Date")
@@ -182,9 +234,23 @@ if(needs_update) { # only run downloads if we must
     pba_data <- c(pba_data,nrow(tmp_cases),nrow(tmp_deaths),nrow(tmp_recoveries),
                    nrow(tmp_icu_active),nrow(tmp_icu_cases),sum(tmp_tests$total),
                   sum(tmp_tests$positivos))
+    
+    conurbano_cases <- conurbano_cases + nrow(tmp_cases)
+    conurbano_deaths <- conurbano_deaths + nrow(tmp_deaths)
+    conurbano_recoveries <- conurbano_recoveries + nrow(tmp_recoveries)
+    conurbano_icu_active <- conurbano_icu_active + nrow(tmp_icu_active)
+    conurbano_icu_cases <- conurbano_icu_cases + nrow(tmp_icu_cases)
+    conurbano_tests_total <- conurbano_tests_total + sum(tmp_tests$total)
+    conurbano_tests_pos <- conurbano_tests_pos + sum(tmp_tests$positivos)
+    
     i=i+1
   }
-  
+  pba_data <- c(pba_data[1],conurbano_cases,conurbano_deaths,conurbano_recoveries,
+                conurbano_icu_active,conurbano_cases,conurbano_tests_total,
+                conurbano_tests_pos,pba_data[2:length(pba_data)])
+  pba_headers <- c(pba_headers[1],"ConurbanoCases","ConurbanoDeaths","ConurbanoRecoveries",
+                   "ConurbanoICUActive","ConurbanoICUCases","ConurbanoTotalTests",
+                   "ConurbanoPositiveTests",pba_headers[2:length(pba_headers)])
   #
   # CABA Cases
   # CABA is COMUNA 1-15 and SIN ESPECIFICAR
@@ -250,10 +316,9 @@ if(needs_update) { # only run downloads if we must
     if(file.exists(write_file[i])) {
       write.table(table_data,write_file[i], sep=",",
                   append=TRUE,row.names = FALSE,col.names = FALSE)
-      write_deltas = FALSE
+      write_deltas = TRUE
     } else { 
       write.csv(table_data,write_file[i],row.names=FALSE)
-      write_deltas = TRUE
     }
   }
   #
@@ -292,8 +357,22 @@ if(needs_update) { # only run downloads if we must
   # @TODO Add daily delta tables
   #
   if(write_deltas) {
+    ## national case deltas
+    case_data <- read.table(cases_file,sep=",",header=TRUE)
+    case_deltas <- covid_deltas(case_data)
+    write.table(case_deltas,deltas_case_file,sep=",",append=FALSE,row.names=FALSE,col.names=TRUE)
     
-  }
+    ## write deaths deltas
+    death_data <- read.table(deaths_file,sep=",",header=TRUE)
+    death_deltas <- covid_deltas(death_data)
+    write.table(death_deltas,deltas_deaths_file,sep=",",append=FALSE,row.names=FALSE,col.names=TRUE)
+    
+    ## write PBA deltas
+    prov_data <- read.table(pba_file,sep=",",header=TRUE)
+    pba_deltas <- covid_deltas(prov_data)
+    write.table(pba_deltas,deltas_pba_file,sep=",",append=FALSE,row.names=FALSE,col.names=TRUE)
+    
+  } ## End write_deltas subroutine
   
   ## 
   # 
