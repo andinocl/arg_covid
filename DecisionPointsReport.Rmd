@@ -1,0 +1,388 @@
+---
+title: "DS Flags Report"
+author: "andino"
+date: "10/29/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+# Load libraries
+library(incidence)
+library(projections)
+library(epitrix)
+library(EpiModel)
+library(EpiEstim)
+library(rmarkdown)
+library(knitr)
+library(distcrete)
+library(Hmisc)
+library(tidyverse)
+library(zoo)
+library(reactable)
+library(webshot)
+library(htmlwidgets)
+library(lubridate)
+#library(data.table)
+
+
+opts_knit$set(eval.after = "fig.cap")
+knitr::opts_chunk$set(fig.pos = '!h')
+options(knitr.kable.NA = '')
+webshot::install_phantomjs()
+
+## GLOBAL FUNCTIONS
+# Remove "Cases" and "Deaths" from headers
+simplify_headers <- function(x) {
+  colnames(x) <- gsub("Cases","",colnames(x))
+  colnames(x) <- gsub("Deaths","",colnames(x))
+  colnames(x) <- tolower(colnames(x))
+  return(x)
+}
+
+# Remove common Spanish accents to allow string matching
+remove_accents <- function(x) {
+  x <- gsub("é","e",x)
+  x <- gsub("á","a",x)
+  x <- gsub("í","i",x)
+  x <- gsub("ó","o",x)
+  x <- gsub("ú","u",x)
+  x <- gsub("É","E",x)
+  x <- gsub("Á","A",x)
+  x <- gsub("Í","I",x)
+  x <- gsub("Ó","O",x)
+  x <- gsub("Ú","U",x)
+  x <- gsub("ñ","n",x)
+  x <- gsub("Ñ","N",x)
+  return(x)
+}
+
+# Find the per-100k value of a vector
+per_100k <- function(x,y,gender="a") {
+  g_row <- 1
+  if(tolower(gender)=="m"){ 
+    g_row <- 2 
+  }
+  if(tolower(gender)=="f"){ g_row <- 3 }
+  colnames.x <- colnames(x)
+  colnames.y <- colnames(y)
+  start_col <- grep("conurbano",colnames.x) + 1
+  end_col <- ncol(x)
+  z <- x[1]
+  for(i in 2:ncol(x)) {
+    z[i] <- round(100000/as.numeric(populations[g_row,grep(colnames.x[i],colnames.y,ignore.case = TRUE)])*x[i],2)
+  }
+  colnames(z) <- colnames.x
+  con_total <- rowSums(y[,start_col:end_col])
+  z$conurbano <- round(100000/con_total[g_row]*x$conurbano,2)
+  z <- as.data.frame(z)
+  return(z)
+}
+
+# Get rolling mean and add back in date column
+roll_set <- function(x,days=7,dates=x$date){
+  days <- 7
+  sub <- x[,2:ncol(x)]
+  z <- round(rollmean(sub,days),2)
+  z <- as.data.frame(cbind("date"=dates[days:nrow(sub)],z))
+  return(z)
+}
+
+# Test whether strings match irrespective of accents, spacing, capitalization
+string_match <- function(string1,string2) {
+  string1 <- remove_accents(tolower(gsub(" ","",string1)))
+  string2 <- remove_accents(tolower(gsub(" ","",string2)))
+  test <- string1==string2
+}
+
+# Create column combining AMBA and ex-PBA
+# @TODO error handling?
+add_amba <- function(argdf) {
+  argdf$amba <- argdf$conurbano + argdf$caba
+  argdf$pbaexamba <- argdf$buenosaires - argdf$conurbano
+  return(argdf)
+}
+
+## END GLOBAL FUNCTIONS
+
+# VARIABLES
+AMBA_start <- "2020-08-14"
+roll_default <- 7
+
+# Load data from scraped files
+
+cases_file <- "data/cases.csv"
+conurbano_file <- "data/conurbano.csv"
+deaths_file <- "data/deaths.csv"
+deaths_deltas_file <- "data/deaths_deltas.csv"
+cases_deltas_file <- "data/cases_deltas.csv"
+conurbano_deltas_file <- "data/conurbano_deltas.csv"
+tests_file <- "data/tests.csv"
+icu_rates_file <- "data/icu_rates.csv"
+
+conurbano_cum_data <- read.table(conurbano_file,header=TRUE,sep=",")
+conurbano_deltas <- read.table(conurbano_deltas_file,header=TRUE,sep=",")
+cases_cum_data <- read.table(cases_file,header=TRUE,sep=",")
+cases_deltas <- read.table(cases_deltas_file,header=TRUE,sep=",")
+death_cum_data <- read.table(deaths_file,header=TRUE,sep=",")
+death_deltas <- read.table(deaths_deltas_file,header=TRUE,sep=",")
+tests_data <- read.table(tests_file,header=TRUE,sep=",")
+icu_rates_data <- read.table(icu_rates_file,header=TRUE,sep=",")
+
+# Clean and combine case data
+conurbano_dates <- conurbano_cum_data$Date
+conurbano_delta_dates <-conurbano_deltas$Date
+conurbano_cum_data <- conurbano_cum_data[-1]
+conurbano_deltas <- conurbano_deltas[-1]
+conurbano_cases_cum_data <- cbind("Date"=conurbano_dates,conurbano_cum_data[,seq(1,length(conurbano_cum_data),7)])
+conurbano_deaths_cum_data <- cbind("Date"=conurbano_dates,conurbano_cum_data[,seq(2,length(conurbano_cum_data),7)])
+conurbano_cases_deltas <- cbind("Date"=conurbano_delta_dates,conurbano_deltas[,seq(1,length(conurbano_deltas),7)])
+conurbano_deaths_deltas <- cbind("Date"=conurbano_delta_dates,conurbano_deltas[,seq(2,length(conurbano_deltas),7)])
+
+cumulative_cases <- merge(cases_cum_data,conurbano_cases_cum_data,by.x="Date",all.x=TRUE)
+case_deltas <- merge(cases_deltas,conurbano_cases_deltas,by.x="Date",all.x=TRUE)
+cumulative_deaths <- merge(death_cum_data,conurbano_deaths_cum_data,by.x="Date",all.x=TRUE)
+death_deltas <- merge(death_deltas,conurbano_deaths_deltas,by.x="Date",all.x=TRUE)
+cumulative_cases[is.na(cumulative_cases)] <- 0
+case_deltas[is.na(case_deltas)] <- 0
+cumulative_deaths[is.na(cumulative_deaths)] <- 0
+death_deltas[is.na(death_deltas)] <- 0
+
+# Simplify column headers
+base_data <- list("Cases"=cumulative_cases,
+                  "CaseDeltas"=case_deltas,
+                  "Deaths"=cumulative_deaths,
+                  "DeathDeltas"=death_deltas)
+base_data <- lapply(base_data,simplify_headers)
+dates <- cumulative_cases$Date
+num_dates <- nrow(cumulative_cases)
+dates.5 <- dates[5:num_dates]
+dates.7 <- dates[7:num_dates]
+
+# Add AMBA columns
+base_data <- lapply(base_data,add_amba)
+
+# Obtain rolling averages
+base_data.5 <- lapply(base_data,roll_set,days=5)
+base_data.7 <- lapply(base_data,roll_set,days=7)
+
+# Obtain per 100k numbers
+national_populations_file <- "data/PopulationNational.csv"
+conurbano_populations_file <- "data/PopulationPBA.csv"
+
+national_populations_t <- read.table(national_populations_file,header=TRUE,sep=",")
+national_populations_t$TotalPopulation <- as.numeric(gsub(",","",national_populations_t$TotalPopulation))
+national_populations_t$MalePopulation <- as.numeric(gsub(",","",national_populations_t$MalePopulation))
+national_populations_t$FemalePopulation <- as.numeric(gsub(",","",national_populations_t$FemalePopulation))
+
+national_populations_t[nrow(national_populations_t)+1,] <- c("National",sum(national_populations_t$TotalPopulation),
+                                        sum(national_populations_t$MalePopulation),
+                                        sum(national_populations_t$FemalePopulation))
+national_populations <- data.frame(t(national_populations_t[-1])) 
+colnames(national_populations) <- gsub(" ","",remove_accents(national_populations_t[,1]))
+conurbano_populations_t <- read.table(conurbano_populations_file,header=TRUE,sep=",")
+conurbano_populations_t$Municipality <- trimws(conurbano_populations_t$Municipality)
+conurbano_populations_t$TotalPopulation <- as.numeric(gsub(",","",conurbano_populations_t$TotalPopulation))
+conurbano_populations_t$MalePopulation <- as.numeric(gsub(",","",conurbano_populations_t$MalePopulation))
+conurbano_populations_t$FemalePopulation <- as.numeric(gsub(",","",conurbano_populations_t$FemalePopulation))
+
+conurbano_populations <- data.frame(t(conurbano_populations_t[-1]))
+colnames(conurbano_populations) <- gsub(" ","",remove_accents(conurbano_populations_t$Municipality))
+populations <- cbind(national_populations,conurbano_populations)
+
+base_data.100k <- lapply(base_data,per_100k,y=populations)
+base_data.5.100k <- lapply(base_data.100k,roll_set,5)
+base_data.7.100k <- lapply(base_data.100k,roll_set,7)
+
+delta_frame <- cbind(base_data$CaseDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
+                     "roll"=0,"per100k"=FALSE)
+delta_frame <- rbind(delta_frame,
+                     cbind(base_data.5$CaseDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
+                     "roll"=5,"per100k"=FALSE))
+delta_frame <- rbind(delta_frame,
+                     cbind(base_data.7$CaseDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
+                     "roll"=7,"per100k"=FALSE))
+delta_frame <- rbind(delta_frame,
+                     cbind(base_data.5.100k$CaseDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
+                     "roll"=5,"per100k"=TRUE))
+delta_frame <- rbind(delta_frame,
+                     cbind(base_data.7$CaseDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
+                     "roll"=7,"per100k"=TRUE))
+delta_frame <- rbind(delta_frame,
+                     cbind(base_data$CaseDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
+                     "roll"=0,"per100k"=TRUE))
+delta_frame$date <- as.Date(delta_frame$date)
+delta_frame$value <- as.numeric(delta_frame$value)
+
+colnames(icu_rates_data) <- cbind("date","beds","national","amba")
+icu_frame <- icu_rates_data %>% pivot_longer(!date,names_to="variable",values_to="value")
+icu_frame$date <- as.Date(icu_frame$date)
+
+provinces <- c("caba"="CABA", "buenosaires"="Province of Buenos Aires", "catamarca"="Catamarca",
+               "chaco"="Chaco","chubut"="Chubut","cordoba"="Córdoba","corrientes"="Corrientes",
+               "entrerios"="Entre Ríos", "formosa"="Formosa","jujuy"="Jujuy",
+               "lapampa"="La Pampa","larioja"="La Rioja","mendoza"="Mendoza",
+               "misiones"="Misiones","neuquen"="Neuquén","rionegro"="Río Negro",
+               "salta"="Salta","sanjuan"="San Juan","sanluis"="San Luis","santacruz"="Santa Cruz",
+               "santafe"="Santa Fe","santiagodelestero"="Santiago del Estero",
+               "tierradelfuego"="Tierra del Fuego","tucuman"="Tucumán","amba"="AMBA (Conurbano + CABA)",
+               "national"="National")
+
+amba_municipalites <- c("Almirante Brown","Avellaneda","Berazategui","Berisso","Brandsen",
+          "Campana","Cañuelas","Ensenada","Escobar","Esteban Echeverría",
+          "Exaltación de la Cruz","Ezeiza","Florencio Varela","General Las Heras",
+          "General Rodríguez","General San Martín","Hurlingham","Ituzaingó",
+          "José C. Paz","La Matanza","La Plata","Lomas de Zamora",
+          "Luján","Marcos Paz","Malvinas Argentinas","Moreno","Merlo",
+          "Morón","Pilar","Presidente Perón","Quilmes","San Fernando",
+          "San Isidro","San Miguel","San Vicente","Tigre","Tres de Febrero",
+          "Vicente López","Zárate")
+
+BA_four <- c("national","amba","caba","buenosaires")
+
+
+```
+
+## New Cases
+
+The following graphs show the overall epidemiological curves in the localities based on simple "new cases per day" as reported.  Note that date of case report DOES NOT equal date of first symptoms or diagnosis, necessarily, as there are frequently reporting delays.  Rather, this data is the change in cases from the previous day's Ministry of Health report:
+
+```{r, total_cases, fig.show="hold",out.width="50%"}
+for(this_province in BA_four) {
+  ##NEW CODE
+  if(string_match("amba",this_province)) {
+    start_date <- as.Date(AMBA_start)
+    first_month <- floor_date(as.Date(AMBA_start),"month")
+  } else {
+    start_date <- as.Date("2020-03-02")
+    first_month <- as.Date("2020-03-01")
+  }
+  plot_frame <- delta_frame %>% filter(roll==0 & date >= start_date & per100k==FALSE & location == this_province)
+  roll_frame <- delta_frame %>% filter(roll==roll_default & 
+                                         date >= start_date & per100k==FALSE & location == this_province)
+  
+  peak_data <- top_n(roll_frame,n=1,wt=value)
+  last_data <- roll_frame %>% filter(date==max(date))
+  last_month <- ceiling_date(plot_frame$date[nrow(plot_frame)],"month")
+  
+   plot <- ggplot(plot_frame) +
+    geom_col(plot_frame,mapping = aes(x=date,y=value,color="gray")) + 
+    geom_line(roll_frame,mapping = aes(x=date,y=value,color="red")) +
+    scale_x_continuous(name="Date",breaks=c(seq(from=first_month,to=last_month,by="month"))) +  
+    scale_y_continuous(name="New Cases") +
+    scale_color_manual(name="Series",labels=c("Cases","Rolling Average"),values=c("gray","red")) + 
+    theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1), 
+          legend.position="bottom") + 
+    labs(title=paste("New Cases, ",provinces[this_province],", ",roll_default,"-day rolling average",sep="")) + 
+    geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
+                              label=round(last_data$value),vjust=1.5,color="red")
+  
+  if(peak_data$value > last_data$value & (last_data$date - 7) > peak_data$date) {   
+      plot <- plot + geom_text(plot_frame, mapping = aes(x=peak_data$date,y=peak_data$value),
+                                               label=paste(peak_data$date,
+                                                           round(peak_data$value),sep="\n"),
+                                                           vjust=-.5,color="red") 
+  }  
+  
+  print(plot)
+  
+}
+
+```
+\newpage
+
+## 14-day trend
+
+Phase 1: 14-day trend lines
+
+```{r, two-week-trend, fig.show="hold",out.width="50%"}
+
+start_date <- last_data$date - 14
+
+for(this_province in BA_four) {
+  
+  plot_frame <- delta_frame %>% filter(roll==0 & date >= start_date & per100k==FALSE & location == this_province)
+  roll_frame <- delta_frame %>% filter(roll==roll_default & 
+                                         date >= start_date & per100k==FALSE & location == this_province)
+  first_data <- roll_frame %>% filter(date==start_date)
+  last_data <- roll_frame %>% filter(date==max(date))
+  
+  plot <- ggplot(plot_frame) +
+    geom_col(plot_frame,mapping = aes(x=date,y=value,color="gray")) + 
+    geom_line(roll_frame,mapping = aes(x=date,y=value,color="red")) +
+    scale_x_continuous(name="Date",breaks=c(seq(from=first_month,to=last_month,by="day"))) +  
+    scale_y_continuous(name="New Cases") +
+    scale_color_manual(name="Series",labels=c("Cases","Rolling Average"),values=c("gray","red")) + 
+    theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1), 
+          legend.position="bottom") + 
+    labs(title=paste("New Cases past 14 days, ",provinces[this_province],
+                     ", ",roll_default,"-day rolling average",sep="")) + 
+    geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
+                              label=round(last_data$value),vjust=1.5,color="red") +
+    geom_text(plot_frame, mapping=aes(x=first_data$date,y=first_data$value),
+                              label=round(first_data$value),vjust=-.5,color="red")
+  
+  print(plot)
+}
+
+```
+
+\newpage
+
+## 28-day trend
+
+Phase 2: 28-day trend lines
+
+```{r, four-week-trend, fig.show="hold",out.width="50%"}
+
+start_date <- last_data$date - 28
+
+for(this_province in BA_four) {
+  
+  plot_frame <- delta_frame %>% filter(roll==0 & date >= start_date & per100k==FALSE & location == this_province)
+  roll_frame <- delta_frame %>% filter(roll==roll_default & 
+                                         date >= start_date & per100k==FALSE & location == this_province)
+  first_data <- roll_frame %>% filter(date==start_date)
+  last_data <- roll_frame %>% filter(date==max(date))
+  
+  plot <- ggplot(plot_frame) +
+    geom_col(plot_frame,mapping = aes(x=date,y=value,color="gray")) + 
+    geom_line(roll_frame,mapping = aes(x=date,y=value,color="red")) +
+    scale_x_continuous(name="Date",breaks=c(seq(from=first_month,to=last_month,by="week"))) +  
+    scale_y_continuous(name="New Cases") +
+    scale_color_manual(name="Series",labels=c("Cases","Rolling Average"),values=c("gray","red")) + 
+    theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1), 
+          legend.position="bottom") + 
+    labs(title=paste("New Cases past 28 days, ",provinces[this_province],
+                     ", ",roll_default,"-day rolling average",sep="")) + 
+    geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
+                              label=round(last_data$value),vjust=1.5,color="red") +
+    geom_text(plot_frame, mapping=aes(x=first_data$date,y=first_data$value),
+                              label=round(first_data$value),vjust=-.5,color="red")
+  
+  print(plot)
+
+}
+```
+\newpage
+## ICU Capacity
+
+```{r icu-graphs, message=FALSE, warning=FALSE}
+
+first_icu_month <- floor_date(icu_frame$date[1],"month")
+last_icu_month <- ceiling_date(icu_frame$date[nrow(icu_frame)],"month")
+national_icu <- icu_frame %>% filter(variable=="national")
+amba_icu <- icu_frame %>% filter(variable=="amba")
+icu_plot <- ggplot(icu_frame,aes(x = date, na.rm=TRUE)) +   
+    geom_line(data=national_icu,mapping=aes(x=date,y=value,na.rm=TRUE,color="blue"),size=1) + 
+    geom_line(data=amba_icu,mapping=aes(x=date,y=value,na.rm=TRUE,color="red"),size=1) +
+    scale_x_continuous(name="Date",breaks=c(seq(first_icu_month,last_icu_month, by="month"))) +
+    scale_y_continuous(name="ICU occupancy percentage") +
+    theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1),legend.position = "right") +
+    scale_color_manual(name="Series",labels=c("National","AMBA"),values=c("blue","red")) +
+    guides(fill = "legend") +
+    labs(title="ICU Occupancy Rates")
+
+print(icu_plot)
+```
