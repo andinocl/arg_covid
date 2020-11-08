@@ -22,6 +22,7 @@ caba_file = "data/caba.csv"
 deltas_case_file = "data/cases_deltas.csv"
 deltas_deaths_file = "data/deaths_deltas.csv"
 deltas_pba_file = "data/conurbano_deltas.csv"
+deltas_test_file = "data/test_deltas.csv"
 
 update_time = "18:45"
 
@@ -372,6 +373,10 @@ if(needs_update) { # only run downloads if we must
     pba_deltas <- covid_deltas(prov_data)
     write.table(pba_deltas,deltas_pba_file,sep=",",append=FALSE,row.names=FALSE,col.names=TRUE)
     
+    ## write Test deltas
+    test_data <- read.table(tests_file,sep=",",header=TRUE)
+    test_deltas <- covid_deltas(test_data)
+    write.table(test_deltas,deltas_test_file,sep=",",append=FALSE,row.names=FALSE,col.names=TRUE)
   } ## End write_deltas subroutine
   
   ## 

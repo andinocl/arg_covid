@@ -120,6 +120,7 @@ cases_deltas_file <- "data/cases_deltas.csv"
 conurbano_deltas_file <- "data/conurbano_deltas.csv"
 tests_file <- "data/tests.csv"
 icu_rates_file <- "data/icu_rates.csv"
+tests_deltas_file <- "data/test_deltas.csv"
 
 conurbano_cum_data <- read.table(conurbano_file,header=TRUE,sep=",")
 conurbano_deltas <- read.table(conurbano_deltas_file,header=TRUE,sep=",")
@@ -219,15 +220,15 @@ colnames(icu_rates_data) <- cbind("date","beds","national","amba")
 icu_frame <- icu_rates_data %>% pivot_longer(!date,names_to="variable",values_to="value")
 icu_frame$date <- as.Date(icu_frame$date)
 
-provinces <- c("caba"="CABA", "buenosaires"="Province of Buenos Aires", "catamarca"="Catamarca",
+provinces <- c("national"="National","caba"="CABA","buenosaires"="Province of Buenos Aires", 
+               "amba"="AMBA (Conurbano + CABA)","catamarca"="Catamarca",
                "chaco"="Chaco","chubut"="Chubut","cordoba"="Córdoba","corrientes"="Corrientes",
                "entrerios"="Entre Ríos", "formosa"="Formosa","jujuy"="Jujuy",
                "lapampa"="La Pampa","larioja"="La Rioja","mendoza"="Mendoza",
                "misiones"="Misiones","neuquen"="Neuquén","rionegro"="Río Negro",
                "salta"="Salta","sanjuan"="San Juan","sanluis"="San Luis","santacruz"="Santa Cruz",
                "santafe"="Santa Fe","santiagodelestero"="Santiago del Estero",
-               "tierradelfuego"="Tierra del Fuego","tucuman"="Tucumán","amba"="AMBA (Conurbano + CABA)",
-               "national"="National")
+               "tierradelfuego"="Tierra del Fuego","tucuman"="Tucumán")
 
 amba_municipalites <- c("Almirante Brown","Avellaneda","Berazategui","Berisso","Brandsen",
           "Campana","Cañuelas","Ensenada","Escobar","Esteban Echeverría",
@@ -385,4 +386,90 @@ icu_plot <- ggplot(icu_frame,aes(x = date, na.rm=TRUE)) +
     labs(title="ICU Occupancy Rates")
 
 print(icu_plot)
+```
+
+\newpage
+## Testing status
+Note:  This data is drawn from the Ministry of Health's determinaciones.csv file.  There are discrepancies in this data and the daily reports that MOH issues.
+
+```{r positivity-graphs, message=FALSE,echo=FALSE}
+tests_data <- read.table(tests_file,header=TRUE,sep=",")
+tests_deltas_data <- read.table(tests_deltas_file,header=TRUE,sep=",")
+
+colnames(tests_data) <- tolower(colnames(tests_data))
+colnames(tests_deltas_data) <- tolower(colnames(tests_deltas_data))
+
+tests_dates <- tests_data$date
+tests_data <- tests_data[,-1]
+
+end_loop <- ncol(tests_data)/2
+for(i in 1:end_loop) {
+  pos_col <- i*2
+  total_col <- pos_col-1
+  col_name <- paste("posratetests",gsub("totaltests","",colnames(tests_data[total_col])),sep="")
+  tests_data[,col_name] <- tests_data[,pos_col] / tests_data[,total_col]
+}
+tests_data$date <- tests_dates
+
+tests_frame <- tests_data %>% pivot_longer(!date,names_to=c("variable","location"),
+                                             names_pattern="(.*)tests(.*)",
+                                             values_to="tests",
+                                             values_transform=list(tests=as.numeric))
+tests_deltas_frame <- tests_deltas_data %>% pivot_longer(!date,names_to=c("variable","location"),
+                                                          names_pattern="(.*)tests(.*)",
+                                                          values_to="tests",
+                                                          values_transform=list(tests=as.numeric))
+tests_deltas_frame$date <- as.Date(tests_deltas_frame$date)
+tests_frame$date <- as.Date(tests_frame$date)
+tests_frame$location <- sub("^$","national",tests_frame$location)
+tests_deltas_frame$location <- sub("^$","national",tests_deltas_frame$location)
+
+tests_pos_frame <- filter(tests_frame,variable=="posrate")
+first_tests_month <- floor_date(tests_frame$date[1],"month")
+last_tests_month <- ceiling_date(tests_frame$date[nrow(tests_frame)],"month")
+
+
+tests_pos_plot <- ggplot(tests_pos_frame,aes(x = date)) +   
+    geom_line(data=tests_pos_frame %>% filter(location=="national"),
+              mapping=aes(x=date,y=tests,na.rm=TRUE,color="blue"),size=1) +  
+    geom_line(data=tests_pos_frame %>% filter(location=="caba"),
+              mapping=aes(x=date,y=tests,na.rm=TRUE,color="yellow"),size=1) +
+    geom_line(data=tests_pos_frame %>% filter(location=="buenosaires"),
+              mapping=aes(x=date,y=tests,na.rm=TRUE,color="red"),size=1) +
+    scale_x_continuous(name="Date",breaks=c(seq(first_tests_month,last_tests_month, by="month"))) +
+    scale_y_continuous(name="Tests Positivity Rate") +
+    theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1),legend.position = "right") +
+    scale_color_manual(name="Series",labels=c("National","CABA","Province of Buenos Aires"),
+                       values=c("blue","yellow","red")) +
+    guides(fill = "legend") +
+    labs(title="Test Positivitiy Rate")
+
+## @TODO actually do test deltas.  Oops.
+tests_plot <- ggplot(tests_deltas_frame,aes(x = date)) +   
+    geom_line(data=tests_deltas_frame %>% filter(location=="national" & variable=="total"),
+              mapping=aes(x=date,y=tests,na.rm=TRUE,color="blue"),size=1) +  
+    geom_line(data=tests_deltas_frame %>% filter(location=="caba" & variable=="total"),
+              mapping=aes(x=date,y=tests,na.rm=TRUE,color="yellow"),size=1) +
+    geom_line(data=tests_deltas_frame %>% filter(location=="buenosaires" & variable=="total"),
+              mapping=aes(x=date,y=tests,na.rm=TRUE,color="red"),size=1) +
+    scale_x_continuous(name="Date",breaks=c(seq(first_tests_month,last_tests_month, by="month"))) +
+    scale_y_continuous(name="Tests Conducted Per Day") +
+    theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1),legend.position = "right") +
+    scale_color_manual(name="Series",labels=c("National","CABA","Province of Buenos Aires"),
+                       values=c("blue","yellow","red")) +
+    guides(fill = "legend") +
+    labs(title="Tests Conducted Per Day")
+
+print(tests_pos_plot)
+print(tests_plot)
+
+
+```
+
+\newpage
+## Doubling times
+
+```{r doubling-time-graphs, message=FALSE, warning=FALSE}
+
+
 ```
