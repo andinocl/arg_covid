@@ -1,7 +1,7 @@
 ---
 title: "DS Flags Report"
 author: "andino"
-date: "10/29/2020"
+date: "11/13/2020"
 output: pdf_document
 ---
 
@@ -24,6 +24,8 @@ library(reactable)
 library(webshot)
 library(htmlwidgets)
 library(lubridate)
+library(maps)
+library(mapdata)
 #library(data.table)
 
 
@@ -208,10 +210,10 @@ delta_frame <- rbind(delta_frame,
                      cbind(base_data.5.100k$CaseDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
                      "roll"=5,"per100k"=TRUE))
 delta_frame <- rbind(delta_frame,
-                     cbind(base_data.7$CaseDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
+                     cbind(base_data.7.100k$CaseDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
                      "roll"=7,"per100k"=TRUE))
 delta_frame <- rbind(delta_frame,
-                     cbind(base_data$CaseDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
+                     cbind(base_data.100k$CaseDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
                      "roll"=0,"per100k"=TRUE))
 delta_frame$date <- as.Date(delta_frame$date)
 delta_frame$value <- as.numeric(delta_frame$value)
@@ -274,7 +276,8 @@ for(this_province in BA_four) {
     scale_y_continuous(name="New Cases") +
     scale_color_manual(name="Series",labels=c("Cases","Rolling Average"),values=c("gray","red")) + 
     theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1), 
-          legend.position="bottom") + 
+          legend.position="bottom",
+          text=element_text(size=18)) + 
     labs(title=paste("New Cases, ",provinces[this_province],", ",roll_default,"-day rolling average",sep="")) + 
     geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
                               label=round(last_data$value),vjust=1.5,color="red")
@@ -316,7 +319,8 @@ for(this_province in BA_four) {
     scale_y_continuous(name="New Cases") +
     scale_color_manual(name="Series",labels=c("Cases","Rolling Average"),values=c("gray","red")) + 
     theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1), 
-          legend.position="bottom") + 
+          legend.position="bottom",
+          text=element_text(size=18)) + 
     labs(title=paste("New Cases past 14 days, ",provinces[this_province],
                      ", ",roll_default,"-day rolling average",sep="")) + 
     geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
@@ -354,7 +358,8 @@ for(this_province in BA_four) {
     scale_y_continuous(name="New Cases") +
     scale_color_manual(name="Series",labels=c("Cases","Rolling Average"),values=c("gray","red")) + 
     theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1), 
-          legend.position="bottom") + 
+          legend.position="bottom",
+          text=element_text(size=18)) + 
     labs(title=paste("New Cases past 28 days, ",provinces[this_province],
                      ", ",roll_default,"-day rolling average",sep="")) + 
     geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
@@ -468,8 +473,168 @@ print(tests_plot)
 
 \newpage
 ## Doubling times
+The regression line is drawn using the R "lm()" function over the x values.
 
+R0 is estimated from the slope of the regression line:
+
+$$
+y = a + bx
+$$
+
+$$
+dt = log(2)/b
+$$
 ```{r doubling-time-graphs, message=FALSE, warning=FALSE}
 
+for(this_province in BA_four) {
+  
+  if(string_match("amba",this_province)) {
+    start_date <- as.Date(AMBA_start)
+    first_month <- floor_date(as.Date(AMBA_start),"month")
+  } else {
+    start_date <- as.Date("2020-03-02")
+    first_month <- as.Date("2020-03-01")
+  }
+
+  plot_frame <- delta_frame %>% filter(roll==0 & date >= start_date & per100k==FALSE & location == this_province)
+  plot_frame$value <- na_if(plot_frame$value,0)
+  plot_frame$log <- log(plot_frame$value)
+  plot_frame$day <- seq.int(nrow(plot_frame))
+  
+  first_data <- roll_frame %>% filter(date==start_date)
+  last_data <- roll_frame %>% filter(date==max(date))
+  fit <- lm(plot_frame$log ~ plot_frame$day) 
+  dt <- round(log(2)/fit$coef[2],2) # Doubling time
+  
+  plot <- ggplot(plot_frame,aes(plot_frame$date,plot_frame$log,col="blue",shape=".")) +
+    stat_summary(fun.plot_frame=mean_cl_normal) +
+    #stat_smooth(method="lm",formula = plot_frame$log ~ plot_frame$day,color="red") +
+    stat_smooth(method="lm", col="red") +
+    scale_y_continuous(name="Daily cases (log)") +
+    scale_x_continuous(name="Date",breaks=c(seq(from=first_month,to=last_month,by="month"))) +
+    scale_color_manual(name="Series",labels=c("Cases","Line of Best Fit"),values=c("blue","red")) +
+    theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1),
+          legend.position="bottom") +
+    labs(title=paste("Doubling Time, ",provinces[this_province],
+                     ": ",dt," days",sep="")) 
+
+  
+  print(plot)
+
+}
+
+```
+\newpage
+## Better R Estimate
+
+This data is drawn from over 1 million epidemiological records, indexed by the date the case was registered with the Ministry of Health. Cases are often registered prior to a confirmed diagnosis; therefore, this data "lags".  The dates are taken based on the date a case was "opened," rather than "confirmed" or "reported".  
+
+An incidence object is created using all confirmed cases in Argentina. The estimate_R() function from the EpiEstim package is used with the serial interval described below. While the estimate_R() function uses a rolling 7-day window, we also cut off the final five days of data due to reduce the confirmation lag.
+
+The following data on serial incidence are drawn from a meta analysis of COVID-19: https://doi.org/10.1002/jmv.26041
+
+$$
+\mu = 5.08\ days
+$$
+
+$$
+\sigma = .18
+$$
+A gamma distribution is created programatically, and the estimate_R function is run against incidence objects containing the new cases reported each day.
+
+```{r label=better-r-estimate, message=FALSE, warning=FALSE, fig.show="hold",out.width="50%"}
+## Other indicators
+load("CovidEpiFile.RData")
+
+mu = 5.08  # mean incubation period
+sigma = .18 # deviation in meta analysis
+cv = mu/sigma
+params <- gamma_mucv2shapescale(mu,cv)
+
+confirmed <- raw_data[clasificacion_resumen %in% c("Confirmado")]
+caba_incid <- confirmed[residencia_provincia_nombre %in% c("CABA")]
+pba_incid <- confirmed[residencia_provincia_nombre %in% c("Buenos Aires")]
+conurbano_incid <-pba_incid[residencia_departamento_nombre %in% amba_municipalites]
+amba_incid <- rbind(caba_incid,conurbano_incid)
+#sanisidro_incid <- pba_incid[residencia_departamento_nombre %in% c("San Isidro")]
+loop_pools <- list(confirmed,caba_incid,amba_incid,conurbano_incid)
+graph_titles <- c("National","CABA","AMBA","Conurbano")
+graph_colors <- c("blue","green","red","red")
+
+first_month <- as.Date("2020-04-01")
+last_month <- ceiling_date(as.Date(today()),"month")
+
+for(i in 1:length(loop_pools)) {
+  incid <- incidence(as.Date(loop_pools[[i]]$fecha_apertura))
+  right_bound <- nrow(incid$counts) - 5
+  thirty <- right_bound - 37
+  
+  res_parametric_si <- estimate_R(incid[1:right_bound],
+                                  method = "parametric_si",
+                                  config = make_config(list(
+                                        mean_si=mu,
+                                        std_si=sigma)))
+  plot_frame <- data.frame("date"=tail(head(res_parametric_si$dates,-5),-2) + 7,
+                          "mean_r"=res_parametric_si$R[,3],
+                          "lower_r"=res_parametric_si$R[,6],
+                          "upper_r"=res_parametric_si$R[,10])
+  plot_frame <- plot_frame %>% filter(date>="2020-04-01")
+  
+  plot_r <- ggplot(plot_frame,aes(x=plot_frame$date, y=plot_frame$mean_r,color="R0")) +
+    geom_line() +
+    geom_ribbon(aes(ymin=plot_frame$lower_r,ymax=plot_frame$upper_r),linetype=2, alpha=0.1) +
+    scale_y_continuous(name="Rate of Transmission (95% CI)") +
+    scale_x_continuous(name="Date",breaks=c(seq(from=first_month,to=last_month,by="month"))) +
+    scale_color_manual(name="Series",labels=c("R0"),values=c("blue")) +
+    theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1),
+          legend.position="bottom") +
+    labs(title=paste("Rate of Transmission, ",provinces[this_province],sep="")) 
+  print(plot_r)
+  
+  plot_frame_60 <- tail(plot_frame,60)
+  
+  plot_r_60 <- ggplot(plot_frame_60,aes(x=plot_frame_60$date, y=plot_frame_60$mean_r,color="R0")) +
+  geom_line() +
+  geom_ribbon(aes(ymin=plot_frame_60$lower_r,ymax=plot_frame_60$upper_r),linetype=2, alpha=0.1) +
+  scale_y_continuous(name="Rate of Transmission (95% CI)") +
+  scale_x_continuous(name="Date",breaks=c(seq(from=floor_date(plot_frame_60$date[1],"week"),
+                                              to=ceiling_date(plot_frame_60$date[60],"week"),by="week"))) +
+  scale_color_manual(name="Series",labels=c("R0"),values=c("blue")) +
+  theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1),
+        legend.position="bottom") +
+  labs(title=paste("Rate of Transmission, ",provinces[this_province]," past 60 days",sep="")) 
+  print(plot_r_60)
+}
+```
+\newpage
+## New Cases (per 100k)
+
+```{r label=provinces_per_100k, message=FALSE, warning=FALSE,fig.show="hold",out.width="33%"}
+
+for(this_province in names(provinces)) {
+  if(string_match("amba",this_province)) {
+    start_date <- as.Date(AMBA_start)
+    first_month <- floor_date(as.Date(AMBA_start),"month")
+  } else {
+    start_date <- as.Date("2020-03-02")
+    first_month <- as.Date("2020-03-01")
+  }
+  last_month <- ceiling_date(today(),"month")
+  
+  plot_frame <- delta_frame %>% filter(roll==roll_default & date >= start_date & per100k==TRUE & location == this_province)
+  last_data <- plot_frame[nrow(plot_frame),]
+  
+  per100k_plot <- ggplot(plot_frame) +   
+    geom_line(data=plot_frame,mapping=aes(x=date,y=value,na.rm=TRUE,color="blue"),size=1) +  
+    scale_x_continuous(name="Date",breaks=c(seq(first_month,last_month, by="quarter"))) +
+    scale_y_continuous(name="Daily Cases per 100k residents") +
+    theme(legend.position="none") +
+    scale_color_manual(values=c("blue")) +
+    geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
+                              label=round(last_data$value),vjust=1.5,color="red") +
+    labs(title=paste(provinces[this_province],": ",round(last_data$value)," daily cases per 100k"))
+  
+  print(per100k_plot)
+}
 
 ```
