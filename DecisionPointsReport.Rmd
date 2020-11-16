@@ -1,7 +1,7 @@
 ---
 title: "DS Flags Report"
 author: "andino"
-date: "11/13/2020"
+date: "11/15/2020"
 output: pdf_document
 ---
 
@@ -278,17 +278,25 @@ for(this_province in BA_four) {
     theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1), 
           legend.position="bottom",
           text=element_text(size=18)) + 
-    labs(title=paste("New Cases, ",provinces[this_province],", ",roll_default,"-day rolling average",sep="")) + 
-    geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
-                              label=round(last_data$value),vjust=1.5,color="red")
+    labs(title=paste("New Cases, ",provinces[this_province],", ",roll_default,"-day rolling average",sep=""))  
+
   
-  if(peak_data$value > last_data$value & (last_data$date - 7) > peak_data$date) {   
-      plot <- plot + geom_text(plot_frame, mapping = aes(x=peak_data$date,y=peak_data$value),
-                                               label=paste(peak_data$date,
-                                                           round(peak_data$value),sep="\n"),
-                                                           vjust=-.5,color="red") 
-  }  
+  if(peak_data$value > last_data$value & (last_data$date - 7) > peak_data$date) {
+    percent_change <- round((last_data$value - peak_data$value) / last_data$value * 100,2)
+    plot <- plot + geom_text(plot_frame, mapping = aes(x=peak_data$date,y=peak_data$value),
+                                             label=paste(peak_data$date,
+                                                         round(peak_data$value),sep="\n"),
+                                                         vjust=-.5,color="red")
+    plot <- plot + geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
+                          label=paste(round(last_data$value),
+                                      "\n-",percent_change,"%",
+                                      sep=""),vjust=1.5,color="red")
   
+  } else {
+
+   plot <- plot + geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
+                          label=round(last_data$value),vjust=1.5,color="red")
+  }
   print(plot)
   
 }
@@ -588,7 +596,7 @@ for(i in 1:length(loop_pools)) {
     scale_color_manual(name="Series",labels=c("R0"),values=c("blue")) +
     theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1),
           legend.position="bottom") +
-    labs(title=paste("Rate of Transmission, ",provinces[this_province],sep="")) 
+    labs(title=paste("Rate of Transmission, ",graph_titles[i],sep="")) 
   print(plot_r)
   
   plot_frame_60 <- tail(plot_frame,60)
@@ -602,7 +610,7 @@ for(i in 1:length(loop_pools)) {
   scale_color_manual(name="Series",labels=c("R0"),values=c("blue")) +
   theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1),
         legend.position="bottom") +
-  labs(title=paste("Rate of Transmission, ",provinces[this_province]," past 60 days",sep="")) 
+  labs(title=paste("Rate of Transmission, ",graph_titles[i]," past 60 days",sep="")) 
   print(plot_r_60)
 }
 ```
