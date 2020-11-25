@@ -356,7 +356,7 @@ if(needs_update) { # only run downloads if we must
   
   #
   #   
-  # @TODO Add daily delta tables
+  # Add daily delta tables
   #
   if(write_deltas) {
     ## national case deltas
