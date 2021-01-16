@@ -1,7 +1,7 @@
 ---
 title: "DS Flags Report"
 author: "andino"
-date: "12/11/2020"
+date: "01/01/2021"
 output: pdf_document
 ---
 
@@ -152,11 +152,41 @@ case_deltas[is.na(case_deltas)] <- 0
 cumulative_deaths[is.na(cumulative_deaths)] <- 0
 death_deltas[is.na(death_deltas)] <- 0
 
+#
+# Redistribute death data
+# PBA, in particular, underreported deaths from May-October.  Need to make a decision on how to smooth this.  
+# For now, what we're doing is proportionally redistributing all of the deaths reported on October 1. 
+# Oct 1 deaths set to average of week before and after it for each locality.
+#
+death_dates <- death_deltas$Date
+death_adj_deltas <- death_deltas[-1]
+death_adj_cum <- cumulative_deaths[-1]
+
+for(i in 1:ncol(death_adj_deltas)) {
+  oct1_deaths_series <- death_adj_deltas[41:55,i]
+  oct1_deaths_series <- oct1_deaths_series[-8]
+  oct1_deaths <- round(sum(oct1_deaths_series)/length(oct1_deaths_series))
+  redistribute <- death_adj_deltas[48,i] - oct1_deaths
+  locality_sum <- sum(death_adj_deltas[1:47,i])
+  
+  if(redistribute > 0) {
+    for(n in 1:47) {
+      death_adj_deltas[n,i] <- death_adj_deltas[n,i] + round(death_adj_deltas[n,i] / locality_sum * redistribute)
+      #death_adj_cum[n,i] <- round(death_adj_cum[n,i] + death_adj_cum[n,i]/redistribute*death_adj_cum[n,i])
+    }
+  }
+  # correct rounding errors by summing on October 1
+  death_adj_deltas[48,i] <- oct1_deaths + sum(death_deltas[1:47,n+1]) - sum(death_adj_deltas[1:47,n])
+}
+death_adj_deltas <- cbind("Date"=death_dates,death_adj_deltas)
+#death_adj_cum <- cbind("Date"=death_dates,death_adj_cum)
+
+
 # Simplify column headers
 base_data <- list("Cases"=cumulative_cases,
                   "CaseDeltas"=case_deltas,
                   "Deaths"=cumulative_deaths,
-                  "DeathDeltas"=death_deltas)
+                  "DeathDeltas"=death_adj_deltas)
 base_data <- lapply(base_data,simplify_headers)
 dates <- cumulative_cases$Date
 num_dates <- nrow(cumulative_cases)
@@ -217,6 +247,17 @@ delta_frame <- rbind(delta_frame,
                      "roll"=0,"per100k"=TRUE))
 delta_frame$date <- as.Date(delta_frame$date)
 delta_frame$value <- as.numeric(delta_frame$value)
+
+death_frame <- cbind(base_data$DeathDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
+                     "roll"=0,"per100k"=FALSE)
+death_frame <- rbind(death_frame,
+                     cbind(base_data.5$DeathDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
+                     "roll"=5,"per100k"=FALSE))
+death_frame <- rbind(death_frame,
+                     cbind(base_data.7$DeathDeltas %>% pivot_longer(!date,names_to="location", values_to="value"),
+                     "roll"=7,"per100k"=FALSE))
+death_frame$date <- as.Date(death_frame$date)
+death_frame$value <- as.numeric(death_frame$value)
 
 colnames(icu_rates_data) <- cbind("date","beds","national","amba")
 icu_frame <- icu_rates_data %>% pivot_longer(!date,names_to="variable",values_to="value")
@@ -283,18 +324,18 @@ for(this_province in BA_four) {
   
   if(peak_data$value > last_data$value & (last_data$date - 7) > peak_data$date) {
     percent_change <- round((last_data$value - peak_data$value) / last_data$value * 100,2)
-    plot <- plot + geom_text(plot_frame, mapping = aes(x=peak_data$date,y=peak_data$value),
+    plot <- plot + annotate("text",x=peak_data$date,y=peak_data$value,
                                              label=paste(peak_data$date,
                                                          round(peak_data$value),sep="\n"),
                                                          vjust=-.5,color="red")
-    plot <- plot + geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
+    plot <- plot + annotate("text",x=last_data$date,y=last_data$value,
                           label=paste(round(last_data$value),
                                       "\n-",percent_change,"%",
                                       sep=""),vjust=1.5,color="red")
   
   } else {
 
-   plot <- plot + geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
+   plot <- plot + annotate("text",x=last_data$date,y=last_data$value,
                           label=round(last_data$value),vjust=1.5,color="red")
   }
   print(plot)
@@ -331,9 +372,9 @@ for(this_province in BA_four) {
           text=element_text(size=18)) + 
     labs(title=paste("New Cases past 14 days, ",provinces[this_province],
                      ", ",roll_default,"-day rolling average",sep="")) + 
-    geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
+    annotate("text",x=last_data$date,y=last_data$value,
                               label=round(last_data$value),vjust=1.5,color="red") +
-    geom_text(plot_frame, mapping=aes(x=first_data$date,y=first_data$value),
+    annotate("text",x=first_data$date,y=first_data$value,
                               label=round(first_data$value),vjust=-.5,color="red")
   
   print(plot)
@@ -370,9 +411,9 @@ for(this_province in BA_four) {
           text=element_text(size=18)) + 
     labs(title=paste("New Cases past 28 days, ",provinces[this_province],
                      ", ",roll_default,"-day rolling average",sep="")) + 
-    geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
+    annotate("text",x=last_data$date,y=last_data$value,
                               label=round(last_data$value),vjust=1.5,color="red") +
-    geom_text(plot_frame, mapping=aes(x=first_data$date,y=first_data$value),
+    annotate("text",x=first_data$date,y=first_data$value,
                               label=round(first_data$value),vjust=-.5,color="red")
   
   print(plot)
@@ -638,11 +679,63 @@ for(this_province in names(provinces)) {
     scale_y_continuous(name="Daily Cases per 100k residents") +
     theme(legend.position="none") +
     scale_color_manual(values=c("blue")) +
-    geom_text(plot_frame, mapping=aes(x=last_data$date,y=last_data$value),
+    annotate("text",x=last_data$date,y=last_data$value,
                               label=round(last_data$value),vjust=1.5,color="red") +
     labs(title=paste(provinces[this_province],": ",round(last_data$value)," daily cases per 100k"))
   
   print(per100k_plot)
 }
 
+```
+
+\newpage
+## Deaths
+Note:  On October 1, the government reported nearly 3,000 deaths that had actually occurred between May and September.  The graphs below smooth the one-day anomaly by assigning those deaths proportionally over the 6 weeks running August 15-September 30. 
+
+```{r label=deaths, message=FALSE, warning=FALSE,fig.show="hold",out.width="50%"}
+
+for(this_province in BA_four) {
+  ##NEW CODE
+
+  start_date <- as.Date(AMBA_start)
+  first_month <- floor_date(as.Date(AMBA_start),"month")
+
+  plot_frame <- death_frame %>% filter(roll==0 & date >= start_date & per100k==FALSE & location == this_province)
+  roll_frame <- death_frame %>% filter(roll==roll_default & 
+                                         date >= start_date & per100k==FALSE & location == this_province)
+  
+  peak_data <- top_n(roll_frame,n=1,wt=value)
+  last_data <- roll_frame %>% filter(date==max(date))
+  last_month <- ceiling_date(plot_frame$date[nrow(plot_frame)],"month")
+  
+   plot <- ggplot(plot_frame) +
+    geom_col(plot_frame,mapping = aes(x=date,y=value,color="gray")) + 
+    geom_line(roll_frame,mapping = aes(x=date,y=value,color="red")) +
+    scale_x_continuous(name="Date",breaks=c(seq(from=first_month,to=last_month,by="month"))) +  
+    scale_y_continuous(name="Deaths") +
+    scale_color_manual(name="Series",labels=c("Deaths","Rolling Average"),values=c("gray","red")) + 
+    theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1), 
+          legend.position="bottom",
+          text=element_text(size=18)) + 
+    labs(title=paste("Deaths, ",provinces[this_province],", ",roll_default,"-day rolling average",sep=""))  
+
+  
+  if(peak_data$value > last_data$value & (last_data$date - 7) > peak_data$date) {
+    percent_change <- round((last_data$value - peak_data$value) / last_data$value * 100,2)
+    plot <- plot + annotate("text",x=peak_data$date,y=peak_data$value,
+                                             label=paste(peak_data$date,
+                                                         round(peak_data$value),sep="\n"),
+                                                         vjust=-.5,color="red")
+
+    plot <- plot + annotate("text",x=last_data$date,y=last_data$value,label=paste(round(last_data$value),
+                                       "\n-",percent_change,"%",
+                                       sep=""),vjust=1.5,color="red")
+  } else {
+
+   plot <- plot + annotate("text",x=last_data$date,y=last_data$value,
+                          label=round(last_data$value),vjust=1.5,color="red")
+  }
+  print(plot)
+  
+}
 ```
