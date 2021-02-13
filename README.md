@@ -3,7 +3,15 @@
 
  Major updates August 15-August 25 to use the full Ministry of Health Epi file
 
+TO RUN ON A MAC: 
+   1. Download RStudio from rstudio.com
+   2. Create project folder in your Mac directory
+   3. Download "Data" directory from GitHub to the project directory
+   4. Download cron_scraper.R, icu_scraper.R, new_report.Rmd to project directory
+   5. Install R plugins required by scripts
+
 @TODO Add a shiny project to make the data easier to explore
+@TODO Add plugin checker/installer to R scripts
 
 ## new_report.Rmd
 R Markdown file to generate number of graphs for National, Buenos Aires, and Province of Buenos Aires, including 14-day trend, doubling time, and estimate of Rt.  Now includes better R estimator with potential for municipal-level tracking.
