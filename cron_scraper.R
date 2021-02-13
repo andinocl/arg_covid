@@ -4,12 +4,15 @@ library(imputeTS)
 library(zoo)
 
 # @TODO Add currently in hospital?
+# @TODO Add vaccine scrape datatable
 
 # Set variables
 minsalud_file = "https://sisa.msal.gov.ar/datos/descargas/covid-19/files/Covid19Casos.csv"
 #minsalud_file = file.choose()
 tests_data_file = "https://sisa.msal.gov.ar/datos/descargas/covid-19/files/Covid19Determinaciones.csv"
 #tests_data_file = file.choose()
+vaccine_data_file = "https://sisa.msal.gov.ar/datos/descargas/covid-19/files/Covid19VacunasAgrupadas.csv"
+#vaccine_data_file = file.choose()
 
 cases_file = "data/cases.csv"
 deaths_file = "data/deaths.csv"
