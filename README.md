@@ -8,11 +8,8 @@
 ## new_report.Rmd
 R Markdown file to generate number of graphs for National, Buenos Aires, and Province of Buenos Aires, including 14-day trend, doubling time, and estimate of Rt.  Now includes better R estimator with potential for municipal-level tracking.
 
-@TODO: find R instantaneous for each province and municipality of PBA to identify N worst.
-
-@TODO: add in testing tracker and positivity tracker
-
-@TODO: add in case growth per 100k
+@TODO: add in vaccination rates
+@TODO: consider adding in age/infection graphs (or save for shiny)
 
 ## cron_scraper.R
 Checks for updates for the national Epi file, cut off at 16:45 local each day. From this data, updates some csv files that collect daily cumulative totals at the national, provincial, and (within CABA and Province of Buenos Aires) municipal/comuna level.
@@ -22,6 +19,8 @@ Also collects daily testing data and exports to tests.csv
 Designed to be run as a cron task.
 
 Exports data in a compressed data file (CovidEpiFile.RData) stored in a matrix raw_data
+
+@TODO: scrape vaccination data
 
 ## icu_scraper.R
 Scraper that searches the daily evening PDF reports from the ministry of health to obtain ICU usage.  Parses PDF to get raw number of national beds in use, national rate of use, and provincial rate of use. This differs from the ICU data taken from the Epi file, which only report ICU usage due to COVID, not overall utilization. It is possible that this data is drawn only from the public health system.
