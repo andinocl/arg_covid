@@ -254,3 +254,255 @@ The following objects are masked from 'package:base':
 
 Error: object 'raw_data' not found
 Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error: object 'raw_data' not found
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error: object 'raw_data' not found
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error in cbind(now_date, vaccine_df_data) : object 'now_date' not found
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error in cbind(now_date, vaccine_df_data) : object 'now_date' not found
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error in cbind(now_date, vaccine_df_data) : object 'now_date' not found
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error in file(file, "rt") : 
+  cannot open the connection to 'https://sisa.msal.gov.ar/datos/descargas/covid-19/files/Covid19VacunasAgrupadas.csv'
+Calls: read.csv2 -> read.table -> file
+In addition: Warning message:
+In file(file, "rt") :
+  URL 'https://sisa.msal.gov.ar/datos/descargas/covid-19/files/Covid19VacunasAgrupadas.csv': status was 'Couldn't resolve host name'
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error in cbind(now_date, vaccine_df_data) : object 'now_date' not found
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error in cbind(now_date, vaccine_df_data) : object 'now_date' not found
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error in cbind(now_date, vaccine_df_data) : object 'now_date' not found
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error in cbind(now_date, vaccine_df_data) : object 'now_date' not found
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error in cbind(now_date, vaccine_df_data) : object 'now_date' not found
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error in cbind(now_date, vaccine_df_data) : object 'now_date' not found
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error in cbind(now_date, vaccine_df_data) : object 'now_date' not found
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error in cbind(now_date, vaccine_df_data) : object 'now_date' not found
+Execution halted
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: 'zoo'
+
+The following object is masked from 'package:imputeTS':
+
+    na.locf
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+Error in cbind(now_date, vaccine_df_data) : object 'now_date' not found
+Execution halted
+/bin/sh: /usr/local/Cellar/r/4.0.2_1/lib/R/bin/Rscript: No such file or directory
+/bin/sh: /usr/local/Cellar/r/4.0.2_1/lib/R/bin/Rscript: No such file or directory
+/bin/sh: /usr/local/Cellar/r/4.0.2_1/lib/R/bin/Rscript: No such file or directory
+/bin/sh: /usr/local/Cellar/r/4.0.2_1/lib/R/bin/Rscript: No such file or directory
+/bin/sh: /usr/local/Cellar/r/4.0.2_1/lib/R/bin/Rscript: No such file or directory
+/bin/sh: /usr/local/Cellar/r/4.0.2_1/lib/R/bin/Rscript: No such file or directory
+/bin/sh: /usr/local/Cellar/r/4.0.2_1/lib/R/bin/Rscript: No such file or directory
