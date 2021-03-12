@@ -209,9 +209,10 @@ national_populations_t$TotalPopulation <- as.numeric(gsub(",","",national_popula
 national_populations_t$MalePopulation <- as.numeric(gsub(",","",national_populations_t$MalePopulation))
 national_populations_t$FemalePopulation <- as.numeric(gsub(",","",national_populations_t$FemalePopulation))
 
-national_populations_t[nrow(national_populations_t)+1,] <- c("National",sum(national_populations_t$TotalPopulation),
-                                        sum(national_populations_t$MalePopulation),
-                                        sum(national_populations_t$FemalePopulation))
+# Do only 1:24 so as not to add AMBA twice, silly
+national_populations_t[nrow(national_populations_t)+1,] <- c("National",sum(national_populations_t$TotalPopulation)-as.numeric(national_populations_t$TotalPopulation[25]),
+                        sum(national_populations_t$MalePopulation)-as.numeric(national_populations_t$MalePopulation[25]),
+                        sum(national_populations_t$FemalePopulation)-as.numeric(national_populations_t$FemalePopulation[25]))
 national_populations <- data.frame(t(national_populations_t[-1])) 
 colnames(national_populations) <- gsub(" ","",remove_accents(national_populations_t[,1]))
 conurbano_populations_t <- read.table(conurbano_populations_file,header=TRUE,sep=",")
