@@ -96,13 +96,20 @@ if(!file.exists(cases_file)) {
 } 
 
 if(needs_update) { # only run downloads if we must
-
-  vaccine_df_data <- read.csv2(vaccine_data_file, sep=",")
-  # @TODO add better error correction for backloading old datafiles
-  #now_date <- "2020-02-12" # comment this out for normal run
-  vaccine_df_data <- cbind(now_date,vaccine_df_data) 
-  colnames(vaccine_df_data) <- c("date","indec_code","province","vaccine","first_dose_qty","second_dose_qty")
-
+  vaccine_file_try <- try(read.csv2(vaccine_data_file,sep=","),silent=TRUE)
+  if(class(vaccine_file_try) != "try-error") {
+    vaccine_data_file <- read.csv2(vaccine_data_file,sep=",")
+  } else {
+    vaccine_data_file <- FALSE
+  }
+  if(vaccine_data_file) {
+    vaccine_df_data <- read.csv2(vaccine_data_file, sep=",")
+    # @TODO add better error correction for backloading old datafiles
+    #now_date <- "2020-02-12" # comment this out for normal run
+    vaccine_df_data <- cbind(now_date,vaccine_df_data) 
+    colnames(vaccine_df_data) <- c("date","indec_code","province","vaccine","first_dose_qty","second_dose_qty")
+  }
+  
   raw_data$residencia_provincia_nombre[(raw_data$residencia_provincia_nombre == "SIN ESPECIFICAR")] <- raw_data$carga_provincia_nombre[(raw_data$residencia_provincia_nombre == "SIN ESPECIFICAR")]
   record_date <- toString(max(as.Date(raw_data$ultima_actualizacion)))
   raw_tests <- fread(tests_data_file)
@@ -367,11 +374,13 @@ if(needs_update) { # only run downloads if we must
     write.csv(caba_table,caba_file,row.names=FALSE)
   }
   
-  if(file.exists(vaccine_df_file)) {
-    write.table(vaccine_df_data,vaccine_df_file,sep=",",append=TRUE,row.names = FALSE,col.names = FALSE)
-  } else {
-    write.csv(vaccine_df_data,vaccine_df_file,row.names = FALSE)
-  }
+  if(vaccine_data_file) {
+    if(file.exists(vaccine_df_file)) {
+      write.table(vaccine_df_data,vaccine_df_file,sep=",",append=TRUE,row.names = FALSE,col.names = FALSE)
+    } else {
+      write.csv(vaccine_df_data,vaccine_df_file,row.names = FALSE)
+    }
+  }  
   
   
   
