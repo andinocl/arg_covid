@@ -98,11 +98,11 @@ if(!file.exists(cases_file)) {
 if(needs_update) { # only run downloads if we must
   vaccine_file_try <- try(read.csv2(vaccine_data_file,sep=","),silent=TRUE)
   if(class(vaccine_file_try) != "try-error") {
-    vaccine_data_file <- read.csv2(vaccine_data_file,sep=",")
+    vaccine_data_file_exists <- TRUE
   } else {
-    vaccine_data_file <- FALSE
+    vaccine_data_file_exists <- FALSE
   }
-  if(vaccine_data_file) {
+  if(vaccine_data_file_exists) {
     vaccine_df_data <- read.csv2(vaccine_data_file, sep=",")
     # @TODO add better error correction for backloading old datafiles
     #now_date <- "2020-02-12" # comment this out for normal run
@@ -326,62 +326,73 @@ if(needs_update) { # only run downloads if we must
   # 
   # write files
   #
-  write_file = matrix(c(cases_file,deaths_file,recoveries_file,icu_cumulative_file,
-                        icu_active_file),nrow=5)
-  write_vector = matrix(rbind(case_total,death_total,recoveries_total,icu_cases_total,
-                              icu_active_total),nrow=5)
-  headers_vector = matrix(rbind(case_header_vector,death_header_vector,recoveries_header_vector,
-                                icu_cases_header_vector,icu_active_header_vector),nrow=5)
-  for (i in 1:length(write_file)) { #write national files
-    table_data = as.data.frame(t(write_vector[i,]))
-    colnames(table_data) <- headers_vector[i,]
-    if(file.exists(write_file[i])) {
-      write.table(table_data,write_file[i], sep=",",
-                  append=TRUE,row.names = FALSE,col.names = FALSE)
-      write_deltas = TRUE
-    } else { 
-      write.csv(table_data,write_file[i],row.names=FALSE)
-    }
-  }
-  #
-  # @Todo fix this, for whatever reason "ultima_actualizacion" no longer current date
-  #
-  tests_table = as.data.frame(t(tests_total))
-  colnames(tests_table) <- tests_header_vector
-  if(file.exists(tests_file)) {
-    if(tests_total[1] %in% raw_tests$fecha) { #
-    }else{
-      write.table(tests_table,tests_file,sep=",",append=TRUE,row.names=FALSE,col.names=FALSE) 
-    }
-  }else{
-    write.csv(tests_table,tests_file,row.names=FALSE)
-  }
-
-  
-  pba_table = as.data.frame(t(pba_data))
-  colnames(pba_table) <- pba_headers
-  if(file.exists(pba_file)) {
-    write.table(pba_table,pba_file,sep=",",append=TRUE,row.names=FALSE,col.names=FALSE) 
-  } else {
-    write.csv(pba_table,pba_file,row.names=FALSE)
-  }
-  
-  caba_table = as.data.frame(t(caba_data))
-  colnames(caba_table) <- caba_headers
-  if(file.exists(caba_file)) {
-    write.table(caba_table,caba_file,sep=",",append=TRUE,row.names=FALSE,col.names=FALSE) 
-  } else {
-    write.csv(caba_table,caba_file,row.names=FALSE)
-  }
-  
-  if(vaccine_data_file) {
-    if(file.exists(vaccine_df_file)) {
-      write.table(vaccine_df_data,vaccine_df_file,sep=",",append=TRUE,row.names = FALSE,col.names = FALSE)
+  if(file.exists(cases_file)) {
+    yesterday_cases <- read.csv2(cases_file,sep=",")
+    if(as.numeric(last(yesterday_cases$CasesNational)) > as.numeric(case_total[2])) {
+      process_writes <- FALSE
+      error_display <- "Incomplete file download?"
+      write_deltas <- FALSE
     } else {
-      write.csv(vaccine_df_data,vaccine_df_file,row.names = FALSE)
+      process_writes <- TRUE
     }
-  }  
+  }
+  if(process_writes) {
+    write_file = matrix(c(cases_file,deaths_file,recoveries_file,icu_cumulative_file,
+                          icu_active_file),nrow=5)
+    write_vector = matrix(rbind(case_total,death_total,recoveries_total,icu_cases_total,
+                                icu_active_total),nrow=5)
+    headers_vector = matrix(rbind(case_header_vector,death_header_vector,recoveries_header_vector,
+                                  icu_cases_header_vector,icu_active_header_vector),nrow=5)
+    for (i in 1:length(write_file)) { #write national files
+      table_data = as.data.frame(t(write_vector[i,]))
+      colnames(table_data) <- headers_vector[i,]
+      if(file.exists(write_file[i])) {
+        write.table(table_data,write_file[i], sep=",",
+                    append=TRUE,row.names = FALSE,col.names = FALSE)
+        write_deltas = TRUE
+      } else { 
+        write.csv(table_data,write_file[i],row.names=FALSE)
+      }
+    }
+    #
+    # @Todo fix this, for whatever reason "ultima_actualizacion" no longer current date
+    #
+    tests_table = as.data.frame(t(tests_total))
+    colnames(tests_table) <- tests_header_vector
+    if(file.exists(tests_file)) {
+      if(tests_total[1] %in% raw_tests$fecha) { #
+      }else{
+        write.table(tests_table,tests_file,sep=",",append=TRUE,row.names=FALSE,col.names=FALSE) 
+      }
+    }else{
+      write.csv(tests_table,tests_file,row.names=FALSE)
+    }
   
+    
+    pba_table = as.data.frame(t(pba_data))
+    colnames(pba_table) <- pba_headers
+    if(file.exists(pba_file)) {
+      write.table(pba_table,pba_file,sep=",",append=TRUE,row.names=FALSE,col.names=FALSE) 
+    } else {
+      write.csv(pba_table,pba_file,row.names=FALSE)
+    }
+    
+    caba_table = as.data.frame(t(caba_data))
+    colnames(caba_table) <- caba_headers
+    if(file.exists(caba_file)) {
+      write.table(caba_table,caba_file,sep=",",append=TRUE,row.names=FALSE,col.names=FALSE) 
+    } else {
+      write.csv(caba_table,caba_file,row.names=FALSE)
+    }
+    
+    if(vaccine_data_file_exists) {
+      if(file.exists(vaccine_df_file)) {
+        write.table(vaccine_df_data,vaccine_df_file,sep=",",append=TRUE,row.names = FALSE,col.names = FALSE)
+      } else {
+        write.csv(vaccine_df_data,vaccine_df_file,row.names = FALSE)
+      }
+    }  
+  }
   
   
   #
@@ -415,6 +426,7 @@ if(needs_update) { # only run downloads if we must
   # Save raw_data as an RData object for use in other files doing 
   # incidence-based analysis
   #
+  rm(list=setdiff(ls(),"raw_data"))  ##clear all variables that aren't the raw data file
   save(raw_data,file="CovidEpiFile.RData")
   
   ## Load incidence object
