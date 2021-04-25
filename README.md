@@ -13,8 +13,8 @@ TO RUN ON A MAC:
 @TODO Add a shiny project to make the data easier to explore
 @TODO Add plugin checker/installer to R scripts
 
-## new_report.Rmd
-R Markdown file to generate number of graphs for National, Buenos Aires, and Province of Buenos Aires, including 14-day trend, doubling time, and estimate of Rt.  Now includes better R estimator with potential for municipal-level tracking.
+## DecisionPointsReport.Rmd
+R Markdown file to generate number of graphs for National, Buenos Aires, and Province of Buenos Aires, including 14-day trend, 28-day trend, doubling time, and estimate of Rt.  Now includes better R estimator with potential for municipal-level tracking.
 
 @TODO: add in vaccination rates
 @TODO: consider adding in age/infection graphs (or save for shiny)
@@ -31,7 +31,7 @@ Exports data in a compressed data file (CovidEpiFile.RData) stored in a matrix r
 @TODO: scrape vaccination data
 
 ## icu_scraper.R
-Scraper that searches the daily evening PDF reports from the ministry of health to obtain ICU usage.  Parses PDF to get raw number of national beds in use, national rate of use, and provincial rate of use. This differs from the ICU data taken from the Epi file, which only report ICU usage due to COVID, not overall utilization. It is possible that this data is drawn only from the public health system.
+Scraper that searches the daily evening PDF reports from the ministry of health to obtain ICU usage.  Parses PDF to get raw number of national beds in use, national rate of use, and provincial rate of use. This differs from the ICU data taken from the Epi file, which only report ICU usage due to COVID, not overall utilization. It is possible that this data is drawn only from the public health system.  This broke when the MinHealth stopped doing daily reports in written format.
 
 # Data files
 
@@ -45,7 +45,7 @@ Daily cumulative confirmed cases, by province, since March 2, 2020
 
 Daily cumulative deaths due to COVID, by province, since August 14, 2020 
 
-@TODO Add in data from Ministry of Health pdf reports
+@TODO Add in data from Ministry of Health pdf reports from previous to August 14
 
 ## recoveries.csv, icu_active.csv, icu_cumulative.csv
 
