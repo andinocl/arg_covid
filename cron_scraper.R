@@ -24,6 +24,17 @@ pba_file ="data/conurbano.csv"
 caba_file = "data/caba.csv"
 vaccine_file = "data/vaccines.csv"
 vaccine_df_file = "data/vaccines_df.csv"
+log_file = "data/log_file.csv"
+control_file = "data/data_control.csv"
+if(file.exists(control_file)) {
+  control_table <- read.csv2(control_file,header=TRUE,sep=",")
+} else {
+  control_table <- c()
+  control_table["content_length"] <- 0
+  control_table["epi_rows"] <- 0
+  control_table["test_rows"] <- 0
+  control_table["last_date"] <- "2020-01-01"
+}
 
 deltas_case_file = "data/cases_deltas.csv"
 deltas_deaths_file = "data/deaths_deltas.csv"
@@ -77,21 +88,37 @@ covid_deltas <- function(orig_df, nas = "avg", start_date = "2020-03-02") {
 # only run if data needs updating
 needs_update = FALSE
 if(!file.exists(cases_file)) { 
-  needs_update = TRUE
+  needs_update = TRUE # Automatically run first time installed
 } else {
   csv_data <- read.csv2(cases_file, sep=",")
   last_line <- tail(csv_data,1)
   now_date <- Sys.Date() - 1  
   
   now_time <- format(as.POSIXct(Sys.time()),"%H:%M")
+
   # check if file updated yesterday before update time
   if ((as.Date(last_line$Date) == now_date && now_time > update_time) || 
       (as.Date(last_line$Date) < now_date)) { # Don't read file unless it should have been updated
-    raw_data <- fread(minsalud_file)
-    if((max(raw_data$ultima_actualizacion) != last_line$Date) && 
-       nrow(raw_data[clasificacion_resumen %in% c("Confirmado")]) != last_line$CasesNational){ #see if file actually updated
-      needs_update = TRUE
+    file_response = httr::HEAD(minsalud_file)
+    file_length <- httr::headers(file_response)[["Content-Length"]]
+    if (control_table["content_length"] < file_length) {
+      raw_data <- fread(minsalud_file) # don't read data if the headers say it's smaller
+      if((max(raw_data$ultima_actualizacion) != last_line$Date) && 
+        nrow(raw_data[clasificacion_resumen %in% c("Confirmado")]) != last_line$CasesNational){ #see if file actually updated
+        
+        control_table["last_run"] <- format(as.POSIXct(Sys.time(),tz="America/Buenos_Aires"))
+        control_table["content_length"] <- file_length
+        control_table["epi_rows"] <- nrow(raw_data)
+        control_table["last_date"] <- format(as.Date(max(raw_data$ultima_actualizacion)))
+        needs_update = TRUE
+        
+      }
+    } else {
+      control_table["log_message"] <- paste("Update file is smaller than previous day's file.",
+                                        file_length,sep=" ")
     }
+  } else {
+    control_table["log_message"] <- "Update already run on current data."
   }
 } 
 
@@ -101,6 +128,7 @@ if(needs_update) { # only run downloads if we must
     vaccine_data_file_exists <- TRUE
   } else {
     vaccine_data_file_exists <- FALSE
+    control_table["log_message"] <- "Vaccine file did not exist."
   }
   if(vaccine_data_file_exists) {
     vaccine_df_data <- read.csv2(vaccine_data_file, sep=",")
@@ -115,7 +143,7 @@ if(needs_update) { # only run downloads if we must
   raw_tests <- fread(tests_data_file)
   raw_tests$positivos[is.na(raw_tests$positivos)] <- 0
   raw_tests$provincia[(raw_tests$localidad) == "CIUDAD DE BUENOS AIRES"] <- "CABA"
-  
+  control_table["test_rows"] <- nrow(raw_tests)
   
   cases <- raw_data[clasificacion_resumen %in% c("Confirmado")]
   deaths <- cases[fallecido %in% c("SI")]
@@ -385,6 +413,9 @@ if(needs_update) { # only run downloads if we must
       write.csv(caba_table,caba_file,row.names=FALSE)
     }
     
+    control_data_table = as.data.frame(t(control_table))
+    write.csv(control_data_table,control_file,row.names=FALSE)
+    
     if(vaccine_data_file_exists) {
       if(file.exists(vaccine_df_file)) {
         write.table(vaccine_df_data,vaccine_df_file,sep=",",append=TRUE,row.names = FALSE,col.names = FALSE)
@@ -426,9 +457,9 @@ if(needs_update) { # only run downloads if we must
   # Save raw_data as an RData object for use in other files doing 
   # incidence-based analysis
   #
-  rm(list=setdiff(ls(),"raw_data"))  ##clear all variables that aren't the raw data file
+  rm(list=setdiff(ls(),c("raw_data","control_file","control_table","log_file")))  ##clear all variables that aren't the raw data file
   save(raw_data,file="CovidEpiFile.RData")
-  
+  control_table["log_message"] <- "Success."
   ## Load incidence object
   # set blank diagnostic days to date case opened
   #
@@ -439,4 +470,13 @@ if(needs_update) { # only run downloads if we must
   #                           groups = cases$clasificacion_resumen)
                              
   
+}
+
+## Write results to log file
+log_data <- as.data.frame(t(control_table))
+
+if(file.exists(log_file)) {
+  write.table(log_data,log_file,sep=",",append=TRUE,row.names=FALSE,col.names=FALSE) 
+} else {
+  write.csv(log_data,log_file,row.names=FALSE)
 }
