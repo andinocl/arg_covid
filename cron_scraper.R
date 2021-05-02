@@ -44,12 +44,14 @@ if(get_zips) {
       minsalud_file = "~/Downloads/Covid19Casos.csv"
       csv_info <- file.info(minsalud_file)
       file_length <- csv_info["size"]
-      temp_tests <-tempfile()
-      download.file(tests_zip,exdir=download_dir,overwrite=TRUE)
+      temp_tests <- tempfile()
+      download.file(tests_zip,temp_tests)
+      unzip(temp_tests,exdir=download_dir,overwrite=TRUE)
       unlink(temp_tests)
       tests_data_file = "~/Downloads/Covid19Determinaciones.csv"
       temp_vaccines <- tempfile()
-      download.file(vaccines_zip,exdir=download_dir,overwrite=TRUE)
+      download.file(vaccines_zip,temp_vaccines)
+      unzip(temp_vaccines,exdir=download_dir,overwrite=TRUE)
       unlink(temp_vaccines)
       vaccines_data_file = "~/Downloads/Covid19VacunasAgrupadas.csv"
       zip_okay <- TRUE
@@ -525,7 +527,7 @@ if(zip_okay) {
                                
     
   }
-}
+} else {control_table["log_message"] <- "Unknown Error "}
 ## Write results to log file
 log_data <- as.data.frame(control_table)
 log_data$runtime <- Sys.time()
