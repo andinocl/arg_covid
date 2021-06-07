@@ -2,6 +2,9 @@ library(pdftools)
 library(tidyverse)
 library(stringr)
 library(lubridate)
+library(tesseract)
+library(magick)
+library(animation)
 
 rate_file="data/icu_rates.csv"
 if(file.exists(rate_file)) {
@@ -15,50 +18,129 @@ if(file.exists(rate_file)) {
   last_date <- as.Date("2020-06-25")
 }
 today <- Sys.Date()
+
 dates <- as.factor(seq(from=as.Date(last_date),to=as.Date(today),by=1))
 
 for(this_day in dates) {
-  file_date <- paste(str_pad(day(this_day),2,pad="0"),
+  file_date <- c(paste(str_pad(day(this_day),2,pad="0"),
                      str_pad(month(this_day),2,pad="0"),
-                     str_sub(year(this_day),start=-2),sep="-")
-  file_prefix="https://www.argentina.gob.ar/sites/default/files/"
-  file_suffix=c("-reporte-vespertino-covid-19.pdf","_reporte_vespertino_covid_19.pdf",
-                "_reporte_vespertino_covid_19_0.pdf","-reporte-vespertino-covid-19_0.pdf",
-                "_reporte_vespertino_covid-19_1.pdf")
+                     year(this_day),sep="-"),
+                 paste(day(this_day),month(this_day),year(this_day),sep="-"))
+  file_prefix <- c(paste("https://www.argentina.gob.ar/sites/default/files/",
+                       year(this_day),
+                       "/",str_pad(month(this_day),2,pad="0"),
+                       "/",sep=""),
+                   "https://www.argentina.gob.ar/sites/default/files/")
+  file_middle <- c("sala-situacion-covid-19_",
+                   "sala-situacion-covid19",
+                   "sala-situacion-covid19-",
+                   "sala-situacion-covid-19-",
+                   "sala-situacion-covid19_")
 
+  
   pdf_exists<-FALSE
-  for(this_suffix in file_suffix) {
-    minsalud_file_test <- paste (file_prefix,file_date,this_suffix,sep="")
-    hd <- httr::HEAD(minsalud_file_test)
-    if(hd$all_headers[[1]]$status == 200) {
-      minsalud_file <- minsalud_file_test
-      pdf_exists <- TRUE
+  for(this_file_prefix in file_prefix) {
+    for(this_file_date in file_date) {
+      for(this_file_middle in file_middle) {
+        minsalud_file_test <- paste (this_file_prefix,this_file_middle,this_file_date,".pdf",sep="")
+        hd <- httr::HEAD(minsalud_file_test)
+        if(hd$all_headers[[1]]$status == 200) {
+          minsalud_file <- minsalud_file_test
+          pdf_exists <- TRUE
+          break
+        }
+      }
     }
   }
 
   if(pdf_exists) {
-    UC_text <- pdf_text(minsalud_file) %>%
-      readr::read_lines()
+
+    full_ocr <- first(pdf_ocr_data(minsalud_file,language="spa",dpi=150))
+    raw_img <- image_read_pdf(minsalud_file, density=150)
     
-    nation_find = str_detect(UC_text,"Nación:")
-    nation_row = which(nation_find == TRUE)
-    nation_pct = str_replace(str_extract(UC_text[nation_row],"(\\d+,\\d)"),",",".")
+    # first construct a search string to make this a bit quicker
+    for(row_num in 1:nrow(full_ocr[1])) {
+      search_fin <- row_num+4
+      full_ocr[row_num,'search'] <- paste(unlist(full_ocr[row_num:search_fin,1]),collapse=" ")
+    }
+    start_row <- which(grepl("Confirmados Covid internados UTI %",full_ocr$search))
+    end_row <- first(which(grepl("Todas las patologías, sector público",full_ocr$search)))
+    row_num <- start_row
+    y_bottom <- as.numeric(first(str_split(full_ocr[end_row,'bbox'],","))[2])
+
+    # Get ICU Beds from OCR box
+    box_start <- as.numeric(first(str_split(full_ocr[row_num,'bbox'],",")))
+    box_end <- as.numeric(first(str_split(full_ocr[row_num+4,'bbox'],",")))
+    x_offset <- box_start[1]
+    y_offset <- box_end[4]  
+    x_dist <- (box_end[3]-x_offset) * .6
+    y_dist <- if(is.na(y_bottom)) {  #if OCR can't find the end string, guess a height
+        as.numeric(image_info(raw_img)['height'])/18 
+      } else {
+        y_bottom - y_offset + (box_end[4] - box_end[2])*2
+      }
+    icu_bounding <- c(x_dist,y_dist,x_offset,y_offset)
+    
+    # This looks complicated, but is there to adjust the image so it's easier for OCR to read
+    beds_box <- raw_img %>% image_crop(geometry_area(x_dist,y_dist,x_offset,y_offset)) %>% image_quantize(max=2) %>%
+      image_negate() %>% image_convert(colorspace="gray") %>% image_negate() %>% ocr()
+    # line below is for debugging what OCR range was
+    #image_ggplot(raw_img %>% image_crop(geometry_area(x_dist,y_dist,x_offset,y_offset)) %>% image_quantize(max=2) %>%
+    #               image_negate() %>% image_convert(colorspace="gray") %>% image_negate())
+  
+    # Get ICU National %
+    box_start <- as.numeric(first(str_split(full_ocr[row_num+5,'bbox'],",")))
+    box_end <- as.numeric(first(str_split(full_ocr[row_num+9,'bbox'],",")))
+    x_offset <- box_start[1]
+    y_offset <- box_end[4] 
+    x_dist <- (box_end[3]-x_offset) * .85
+    y_dist <- if(is.na(y_bottom)) {
+      as.numeric(image_info(raw_img)['height'])/22
+      } else {
+        y_bottom - y_offset + (box_end[4] - box_end[2])/2
+      }
+    icu_bounding <- c(x_dist,y_dist,x_offset,y_offset)
+    nation_bounding <- c(x_dist,y_dist,x_offset,y_offset)
+    nation_box <- raw_img %>% image_crop(geometry_area(x_dist,y_dist,x_offset,y_offset)) %>% image_quantize(max=2) %>%
+      image_negate() %>% image_convert(colorspace="gray") %>% image_negate() %>% image_contrast() %>% image_blur(sigma=1,radius=10) %>% image_level(mid_point = 1) %>% ocr()
+    # line below is for debugging what OCR range was
+    #image_ggplot(raw_img %>% image_crop(geometry_area(x_dist,y_dist,x_offset,y_offset)) %>% image_quantize(max=2) %>%
+    #               image_negate() %>% image_convert(colorspace="gray") %>% image_negate() %>% image_contrast() %>% image_blur(sigma=1,radius=10) %>% image_level(mid_point = 1))
+    
+    # Get AMBA ICU%
+    box_start <- as.numeric(first(str_split(full_ocr[row_num+11,'bbox'],",")))
+    box_end <- as.numeric(first(str_split(full_ocr[row_num+15,'bbox'],",")))
+    x_offset <- box_start[1]
+    y_offset <- box_end[4] 
+    x_dist <- (box_end[3]-x_offset) * .85
+    y_dist <- if(is.na(y_bottom)) {
+      as.numeric(image_info(raw_img)['height'])/22
+    } else {
+      y_bottom - y_offset + (box_end[4] - box_end[2])/2
+    }
+    amba_bounding <- c(x_dist,y_dist,x_offset,y_offset)
+    amba_box <- raw_img %>% image_crop(geometry_area(x_dist,y_dist,x_offset,y_offset)) %>% image_quantize(max=2) %>%
+      image_negate() %>% image_convert(colorspace="gray") %>% image_negate() %>% image_contrast() %>% image_blur(sigma=1,radius=10) %>% image_level(mid_point = 1) %>% ocr()
+    # line below is for debugging what OCR range was
+    #image_ggplot(raw_img %>% image_crop(geometry_area(x_dist,y_dist,x_offset,y_offset)) %>% image_quantize(max=2) %>%
+    #               image_negate() %>% image_convert(colorspace="gray") %>% image_negate() %>% image_contrast() %>% image_blur(sigma=1,radius=10) %>% image_level(mid_point = 1))
+
+    unlink(tempfile())
+
+    # Extract percentages out of OCR'd strings
+    
+    icu_total <- str_extract(beds_box,"(\\d+)")
+    nation_pct = str_replace(str_extract(nation_box,"(\\d+.\\d)"),",",".")
     if(is.na(nation_pct)) {
-      nation_pct = str_replace(str_extract(UC_text[nation_row],"(\\d{2})%"),"%","")
+      nation_pct = str_replace(str_extract(nation_box,"(\\d{2})%"),"%","")
     }
-    amba_find = str_detect(UC_text,"AMBA:")
-    amba_row = which(amba_find == TRUE)
-    amba_pct = str_replace(str_extract(UC_text[amba_row],"(\\d+,\\d)"),",",".")
+    amba_pct = str_replace(str_extract(amba_box,"(\\d+.\\d)"),",",".")
     if(is.na(amba_pct)) {
-      amba_pct =str_replace(str_extract(UC_text[amba_row],"(\\d{2})%"),"%","") 
+      amba_pct =str_replace(str_extract(amba_box,"(\\d{2})%"),"%","") 
     }
-    uti_total_find = str_detect(UC_text,"Casos confirmados COVID-19 internados en UTI")
-    uti_total_row = which(uti_total_find == TRUE)
-    ## will collect whether there's a medial period or not
-    icu_total = str_replace(
-      str_replace(str_extract(UC_text[uti_total_row],": (\\d+\\.\\d+|\\d+)"),": ",""),
-      "\\.","")
+
     this_row = c(this_day,icu_total,nation_pct,amba_pct)
+
   }
   else { 
     this_row = c(this_day,"NA","NA","NA") 
@@ -73,46 +155,4 @@ write.table(back_icu,col.names=TRUE,row.names = FALSE,
 
 
 
-
-# Was going to use the below on covidstats.com.ar data, but there would be too many errors
-
-# national_prefix = "data/backdate/national/2020-08-17 - DsNación - "
-# pba_prefix = "data/backdate/pba/2020-08-17 - DsNación - Buenos Aires - "
-# caba_prefix = "data/backdate/pba/2020-08-17 - DsNación - CABA - "
-# 
-# 
-# provinces <- c("CABA", "Buenos Aires", "Catamarca","Chaco","Chubut",
-#                "Córdoba","Corrientes","Entre Ríos", "Formosa","Jujuy",
-#                "La Pampa","La Rioja","Mendoza","Misiones","Neuquén",
-#                "Río Negro","Salta","San Juan","San Luis","Santa Cruz",
-#                "Santa Fe","Santiago del Estero","Tierra del Fuego",
-#                "Tucumán")
-# total_population <- character()
-# male_population <- character()
-# female_population <- character()
-# daily_deaths <- character()
-# for (this_province in provinces) {
-#   this_file <- paste(national_prefix,this_province,".csv",sep="")
-#   raw_data <- read.csv2(this_file,header=FALSE,sep=",")
-#   total_population[this_province] <- raw_data[1,2]
-#   male_population[this_province] <- raw_data[1,3]
-#   female_population[this_province] <- raw_data[1,4]
-#   daily_deaths <- cbind(daily_deaths,raw_data[5:234,2])
-#   
-#   
-# }
-# 
-# amba <- c("Almirante Brown","Avellaneda","Berazategui","Berisso","Brandsen",
-#           "Campana","Cañuelas","Ensenada","Escobar","Esteban Echeverría",
-#           "Exaltación de la Cruz","Ezeiza","Florencio Varela","General Las Heras",
-#           "General Rodríguez","General San Martín","Hurlingham","Ituzaingó",
-#           "José C. Paz","La Matanza","La Plata","Lomas de Zamora",
-#           "Luján","Marcos Paz","Malvinas Argentinas","Moreno","Merlo",
-#           "Morón","Pilar","Presidente Perón","Quilmes","San Fernando",
-#           "San Isidro","San Miguel","San Vicente","Tigre","Tres de Febrero",
-#           "Vicente López","Zárate","SIN ESPECIFICAR")
-# 
-# caba_search_vector <- c("01","02","03","04","05","06","07","08",
-#                         "09","10","11","12","13","14","15")
-# 
 
