@@ -1,3 +1,4 @@
+setwd("~/arg_covid")
 library(data.table)
 library(incidence)
 library(imputeTS)
@@ -6,6 +7,7 @@ library(anytime)
 
 # @TODO Add currently in hospital?
 # @TODO Add vaccine scrape datatable
+
 
 # initiate logs and controls
 log_file = "data/log_file.csv"
@@ -23,8 +25,7 @@ if(file.exists(control_file)) {
 
 
 # Set variables
-get_zips <- TRUE  # Set to true if downloading new zip files
-download_cases <- FALSE  #Set to true if manually downloaded 
+get_zips <- TRUE  # Set to true if downloading, false if using downloaded unzipped files
 erase_zips <- FALSE # No need to edit
 download_dir <- "~/Downloads"
 
@@ -53,7 +54,7 @@ if(get_zips) {
       download.file(vaccines_zip,temp_vaccines)
       unzip(temp_vaccines,exdir=download_dir,overwrite=TRUE)
       unlink(temp_vaccines)
-      vaccines_data_file = "~/Downloads/Covid19VacunasAgrupadas.csv"
+      vaccine_data_file = "~/Downloads/Covid19VacunasAgrupadas.csv"
       zip_okay <- TRUE
       erase_zips <- TRUE
       control_table["zip_last_modified"] <- anytime(zip_status$`last-modified`)
@@ -66,19 +67,13 @@ if(get_zips) {
     zip_okay <- FALSE
   }
 } else { # old download/filechooser
-  if(download_cases) {
-    minsalud_file = "https://sisa.msal.gov.ar/datos/descargas/covid-19/files/Covid19Casos.csv"
-    file_response = httr::HEAD(minsalud_file)
-    file_length <- httr::headers(file_response)[["Content-Length"]]
-  } else {
+
     minsalud_file = file.choose()
     chosen_file_info <- file.info(minsalud_file)
     file_length <- chosen_file_info["size"]
-  }
-  #tests_data_file = "https://sisa.msal.gov.ar/datos/descargas/covid-19/files/Covid19Determinaciones.csv"
-  tests_data_file = file.choose()
-  #vaccine_data_file = "https://sisa.msal.gov.ar/datos/descargas/covid-19/files/Covid19VacunasAgrupadas.csv"
-  vaccine_data_file = file.choose()
+    tests_data_file = file.choose()
+    vaccine_data_file = file.choose()
+  
 }
 
 cases_file = "data/cases.csv"
