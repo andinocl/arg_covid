@@ -1,7 +1,7 @@
 ---
 title: "DS Flags Report"
 author: "andino"
-date: "02/17/2021"
+date: "05/23/2021"
 output: pdf_document
 ---
 
@@ -21,8 +21,8 @@ library(Hmisc)
 library(tidyverse)
 library(zoo)
 library(reactable)
-library(webshot)
-library(htmlwidgets)
+#library(webshot)
+#library(htmlwidgets)
 library(lubridate)
 library(maps)
 library(mapdata)
@@ -32,7 +32,7 @@ library(mapdata)
 opts_knit$set(eval.after = "fig.cap")
 knitr::opts_chunk$set(fig.pos = '!h')
 options(knitr.kable.NA = '')
-webshot::install_phantomjs()
+#webshot::install_phantomjs()
 
 ## GLOBAL FUNCTIONS
 # Remove "Cases" and "Deaths" from headers
@@ -331,7 +331,7 @@ for(this_province in BA_four) {
                                                          vjust=-.5,color="red")
     plot <- plot + annotate("text",x=last_data$date,y=last_data$value,
                           label=paste(round(last_data$value),
-                                      "\n-",percent_change,"%",
+                                      "\n",percent_change,"%",
                                       sep=""),vjust=1.5,color="red")
   
   } else {
@@ -430,6 +430,7 @@ first_icu_month <- floor_date(icu_frame$date[1],"month")
 last_icu_month <- ceiling_date(icu_frame$date[nrow(icu_frame)],"month")
 national_icu <- icu_frame %>% filter(variable=="national")
 amba_icu <- icu_frame %>% filter(variable=="amba")
+icu_beds <- icu_frame %>% filter(variable=="beds")
 icu_plot <- ggplot(icu_frame,aes(x = date, na.rm=TRUE)) +   
     geom_line(data=national_icu,mapping=aes(x=date,y=value,na.rm=TRUE,color="blue"),size=1) + 
     geom_line(data=amba_icu,mapping=aes(x=date,y=value,na.rm=TRUE,color="red"),size=1) +
@@ -441,6 +442,17 @@ icu_plot <- ggplot(icu_frame,aes(x = date, na.rm=TRUE)) +
     labs(title="ICU Occupancy Rates")
 
 print(icu_plot)
+
+beds_plot <- ggplot(icu_frame,aes(x = date, na.rm=TRUE)) +   
+    geom_col(data=icu_beds,mapping=aes(x=date,y=value,na.rm=TRUE,color="gray"),size=.5) + 
+    scale_x_continuous(name="Date",breaks=c(seq(first_icu_month,last_icu_month, by="month"))) +
+    scale_y_continuous(name="ICU occupancy percentage") +
+    theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1),legend.position = "right") +
+    scale_color_manual(name="Series",labels=c("Occupied ICU Beds"),values=c("gray")) +
+    guides(fill = "legend") +
+    labs(title="ICU Bed Occupancy, Nationwide")
+
+print(beds_plot)
 ```
 
 \newpage
@@ -729,7 +741,7 @@ for(this_province in BA_four) {
                                                          vjust=-.5,color="red")
 
     plot <- plot + annotate("text",x=last_data$date,y=last_data$value,label=paste(round(last_data$value),
-                                       "\n-",percent_change,"%",
+                                       "\n",percent_change,"%",
                                        sep=""),vjust=1.5,color="red")
   } else {
 
