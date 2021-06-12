@@ -22,6 +22,11 @@ today <- Sys.Date()
 dates <- as.factor(seq(from=as.Date(last_date),to=as.Date(today),by=1))
 
 for(this_day in dates) {
+  # It's a simple thing, but you'd think they could at least standardize their naming convention.
+  # All of these for loops are added because, well, the people doing this have no 
+  # rhyme or reason, which really instills confidence. (as does the quality of my
+  # scripting, I know, I know)
+  
   file_date <- c(paste(str_pad(day(this_day),2,pad="0"),
                      str_pad(month(this_day),2,pad="0"),
                      year(this_day),sep="-"),
@@ -36,23 +41,25 @@ for(this_day in dates) {
                    "sala-situacion-covid19-",
                    "sala-situacion-covid-19-",
                    "sala-situacion-covid19_")
+  file_suffix <- c("","_0")
 
   
   pdf_exists<-FALSE
-  for(this_file_prefix in file_prefix) {
-    for(this_file_date in file_date) {
-      for(this_file_middle in file_middle) {
-        minsalud_file_test <- paste (this_file_prefix,this_file_middle,this_file_date,".pdf",sep="")
-        hd <- httr::HEAD(minsalud_file_test)
-        if(hd$all_headers[[1]]$status == 200) {
-          minsalud_file <- minsalud_file_test
-          pdf_exists <- TRUE
-          break
+  for(this_suffix in file_suffix) {
+    for(this_file_prefix in file_prefix) {
+      for(this_file_date in file_date) {
+        for(this_file_middle in file_middle) {
+          minsalud_file_test <- paste (this_file_prefix,this_file_middle,this_file_date,this_suffix,".pdf",sep="")
+          hd <- httr::HEAD(minsalud_file_test)
+          if(hd$all_headers[[1]]$status == 200) {
+            minsalud_file <- minsalud_file_test
+            pdf_exists <- TRUE
+            break
+          }
         }
       }
     }
   }
-
   if(pdf_exists) {
 
     full_ocr <- first(pdf_ocr_data(minsalud_file,language="spa",dpi=150))
